@@ -2,10 +2,11 @@
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
+    const apiBase = process.env.API_INTERNAL_URL || 'http://localhost:3001/api';
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL}/:path*`,
+        destination: `${apiBase}/:path*`,
       },
     ];
   },

@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const BASE = typeof window === 'undefined'
+  ? (process.env.API_INTERNAL_URL || 'http://localhost:3001/api')
+  : '/api';
 
 export const api = axios.create({ baseURL: BASE, withCredentials: true });
 
@@ -22,7 +24,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) { window.location.href = '/login'; return Promise.reject(err); }
       try {
-        const { data } = await axios.post(`${BASE}/auth/refresh`, { refreshToken });
+        const { data } = await axios.post(`/api/auth/refresh`, { refreshToken });
         localStorage.setItem('access_token', data.accessToken);
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
