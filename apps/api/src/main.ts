@@ -20,8 +20,9 @@ async function bootstrap() {
     }),
   );
 
+  const isDev = config.get('nodeEnv') !== 'production';
   app.enableCors({
-    origin: config.get('webUrl'),
+    origin: isDev ? true : config.get('webUrl'),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
