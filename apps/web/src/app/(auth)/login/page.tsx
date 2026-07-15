@@ -24,6 +24,7 @@ export default function LoginPage() {
       } else {
         localStorage.setItem('access_token', res.accessToken);
         localStorage.setItem('refresh_token', res.refreshToken);
+        document.cookie = `access_token=${res.accessToken}; path=/; SameSite=Strict`;
         router.push('/dashboard');
       }
     } catch (err: any) {
@@ -38,6 +39,7 @@ export default function LoginPage() {
       const res = await authApi.verifyTotp(tempToken, totpCode);
       localStorage.setItem('access_token', res.accessToken);
       localStorage.setItem('refresh_token', res.refreshToken);
+      document.cookie = `access_token=${res.accessToken}; path=/; SameSite=Strict`;
       router.push('/dashboard');
     } catch {
       setError('Invalid 2FA code');

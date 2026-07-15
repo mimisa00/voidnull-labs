@@ -105,6 +105,8 @@ docker compose -f infra/docker/compose.dev.yml up -d
 # API:  http://localhost:3001/api
 # Web:  http://localhost:3000
 # Docs: http://localhost:3001/api/docs
+
+# docker compose -f infra/docker/compose.dev.yml down
 ```
 
 **Default accounts after seed:**
@@ -138,3 +140,15 @@ Permissions format: `users:create`, `users:read`, `roles:list`, `permissions:lis
 | GET | /api/permissions | List permissions |
 
 Full Swagger docs: `http://localhost:3001/api/docs`
+
+## check all services logs
+# all services log
+docker compose -f infra/docker/compose.dev.yml logs -f
+
+# single service log
+docker compose -f infra/docker/compose.dev.yml logs -f web
+docker compose -f infra/docker/compose.dev.yml logs -f api
+docker compose -f infra/docker/compose.dev.yml logs -f postgres
+
+# multiple services log
+docker compose -f infra/docker/compose.dev.yml logs -f api web
