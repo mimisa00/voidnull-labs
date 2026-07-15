@@ -41,6 +41,29 @@ voidnull/
 
 ## Quick Start
 
+> **前置步驟：關於 `package-lock.json`**
+>
+> `package-lock.json` 記錄每個套件的精確版本，確保所有人與各環境的安裝結果一致。
+>
+> **何時需要重跑 `npm install`**
+>
+> | 情況 | 指令 |
+> |------|------|
+> | 首次 clone，本機開發用 | `npm install` |
+> | 新增、移除或升級套件後 | `npm install`，並將更新後的 `package-lock.json` commit 進版控 |
+> | 僅 clone 下來同步環境（未改套件） | `npm ci`（照 lockfile 精確安裝） |
+> | Docker build（整合測試站／正式站） | 不需手動執行，Dockerfile 內已寫好 `npm ci` |
+>
+> 首次建立 lockfile 後，執行以下指令提交：
+>
+> ```bash
+> npm install
+> git add package-lock.json
+> git commit -m "chore: add package-lock.json"
+> ```
+>
+> 之後只有在變更套件時才需重跑 `npm install` 並重新提交 lockfile。各站台 clone 後直接 Docker build 即可，無需手動執行任何 npm 指令。
+
 ```bash
 cp .env.example .env
 docker compose -f infra/docker/compose.dev.yml up -d
