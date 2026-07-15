@@ -1,0 +1,48 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/voidnull
+
+            # Pull latest images
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f infra/docker/compose.staging.yml pull
+
+            # Run DB migrations
+            docker compose -f infra/docker/compose.staging.yml run --rm api \
+              sh -c "cd /app/packages/database && npx prisma migrate deploy"
+
+            # Rolling restart (zero-downtime)
+            docker compose -f infra/docker/compose.staging.yml up -d --no-deps --scale api=2 api
+            sleep 15
+            docker compose -f infra/docker/compose.staging.yml up -d --no-deps api web
+
+            # Reload Nginx
+            docker compose -f infra/docker/compose.staging.yml exec -T nginx nginx -s reload
+
+            # Health check
+            sleep 10
+            curl -f https://staging.voidnull.io/api/health || exit 1
+
+            echo "Staging deployment complete!"
+        env:
+          GITHUB_REPO: ${{ github.repository }}

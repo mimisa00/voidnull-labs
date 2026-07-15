@@ -1,0 +1,33 @@
+node_modules/
+.next/
+dist/
+build/
+.turbo/
+coverage/
+
+.env
+.env.local
+.env.staging
+.env.prod
+
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# Docker volumes
+postgres_data/
+redis_data/
+grafana_data/
+es_data/
+
+# Certbot
+certbot/conf/
+certbot/www/

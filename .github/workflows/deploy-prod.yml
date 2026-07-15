@@ -1,0 +1,60 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production  # Requires manual approval in GitHub
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/voidnull
+            export IMAGE_TAG=${{ github.event.inputs.image_tag || 'latest' }}
+
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f infra/docker/compose.prod.yml pull
+
+            # DB migration
+            docker compose -f infra/docker/compose.prod.yml run --rm api \
+              sh -c "cd /app/packages/database && npx prisma migrate deploy"
+
+            # Zero-downtime rolling deploy
+            docker compose -f infra/docker/compose.prod.yml up -d --no-deps api web
+            sleep 20
+
+            docker compose -f infra/docker/compose.prod.yml exec -T nginx nginx -s reload
+
+            # Health check both domains
+            curl -f https://voidnull.io/api/health || exit 1
+
+            # Clean up dangling images
+            docker image prune -f
+
+            echo "Production deployment complete! Image: $IMAGE_TAG"
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "Deployment ${{ job.status }} for ${{ github.sha }}"

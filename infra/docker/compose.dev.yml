@@ -1,0 +1,90 @@
+name: voidnull-dev
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voidnull}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-voidnull_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voidnull}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Applications ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile.dev
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voidnull}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-voidnull_dev}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_min_32_chars_long}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_min_32}
+      JWT_2FA_SECRET: ${JWT_2FA_SECRET:-dev_2fa_secret_min_32_chars}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      NODE_ENV: development
+      API_PORT: 3001
+      WEB_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../apps/api/src:/app/apps/api/src:ro
+      - ../../packages/database/prisma:/app/packages/database/prisma:ro
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile.dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api
+      NEXT_PUBLIC_WS_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ../../apps/web/src:/app/apps/web/src:ro
+
+  # ── DB Migration on startup ─────────────────────────────────────────────────
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile.dev
+    command: sh -c "cd packages/database && npx prisma migrate deploy && npx prisma db seed"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voidnull}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-voidnull_dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:
+  redis_data:
