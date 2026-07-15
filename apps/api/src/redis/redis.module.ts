@@ -9,7 +9,7 @@ import { RedisService } from './redis.service';
       provide: 'REDIS_CLIENT',
       useFactory: async (config: ConfigService) => {
         const { default: Redis } = await import('ioredis');
-        return new Redis(config.get('redis.url'));
+        return new Redis(config.get<string>('redis.url', 'redis://localhost:6379'));
       },
       inject: [ConfigService],
     },

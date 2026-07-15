@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "scripts": {
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
