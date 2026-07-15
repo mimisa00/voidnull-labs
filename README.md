@@ -64,6 +64,41 @@ voidnull/
 >
 > After that, only re-run `npm install` when dependencies change and commit the updated lockfile. All other environments just need a `docker compose` build — no manual npm commands required.
 
+> **Prerequisites: Database migrations**
+>
+> On every startup, the `migrate` service runs `prisma migrate deploy`, which checks which migrations have not yet been applied and runs them automatically. This works for all environments — dev, staging, and production — with no manual intervention required.
+>
+> However, **migration files must exist in the repository first.** If `packages/database/prisma/migrations/` is missing (e.g. on a fresh clone of a brand-new repo), the migrate service will find nothing to apply and the database tables will never be created.
+>
+> **One-time setup — do this once and commit:**
+>
+> ```bash
+> # Ensure the postgres container is running first
+> docker compose -f infra/docker/compose.dev.yml up -d postgres
+>
+> set DATABASE_URL=postgresql://voidnull:secret@localhost:5432/voidnull_dev
+> cd packages/database
+> npx prisma migrate dev --name init
+> ```
+>
+> ```bash
+> git add packages/database/prisma/migrations/
+> git commit -m "chore: add initial prisma migration"
+> ```
+>
+> After this is committed, everyone who clones the repo — on any environment — will have tables created automatically on first `docker compose up`.
+>
+> **When the schema changes later:**
+>
+> ```bash
+> # After editing schema.prisma
+> npx prisma migrate dev --name <describe-the-change>
+> git add packages/database/prisma/migrations/
+> git commit -m "chore: add migration for <describe-the-change>"
+> ```
+>
+> Other environments pick up the new migration automatically on next startup — no manual steps needed.
+
 ```bash
 cp .env.example .env
 docker compose -f infra/docker/compose.dev.yml up -d
