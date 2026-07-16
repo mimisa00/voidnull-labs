@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 
 ENV=${1:-prod}
 EMAIL="admin@voidnull.io"
-CF_CREDENTIALS="/etc/letsencrypt/cloudflare.ini"
+CF_CREDENTIALS="/run/secrets/cloudflare.ini"
 
 if [ "$ENV" = "staging" ]; then
     DOMAINS=("staging.voidnull.io")
