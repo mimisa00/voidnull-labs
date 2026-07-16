@@ -102,7 +102,7 @@ git commit -m "chore: add migration for <describe-the-change>"
 ### Dev (local)
 
 ```bash
-cp .env.example infra/docker/.env
+cp infra/docker/.env.dev.example infra/docker/.env
 
 cd infra/docker
 docker compose -f compose.dev.yml up -d
@@ -131,7 +131,7 @@ Staging runs on a real server with a Let's Encrypt **staging** certificate (issu
 **Step 1 — Environment variables**
 
 ```bash
-cp .env.example infra/docker/.env
+cp infra/docker/.env.staging.example infra/docker/.env
 # Edit infra/docker/.env — fill in POSTGRES_PASSWORD, JWT_SECRET, etc.
 ```
 
@@ -172,7 +172,7 @@ Identical flow to staging, but uses a real Let's Encrypt certificate and the pro
 **Step 1 — Environment variables**
 
 ```bash
-cp .env.example infra/docker/.env
+cp infra/docker/.env.prod.example infra/docker/.env
 # Edit infra/docker/.env — use production values
 ```
 
