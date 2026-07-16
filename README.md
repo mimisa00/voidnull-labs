@@ -230,11 +230,11 @@ Full Swagger docs: `http://localhost:3001/api/docs`
 
 ```bash
 # Run from infra/docker/
-docker compose -f compose.dev.yml logs -f           # all services
-docker compose -f compose.dev.yml logs -f web
-docker compose -f compose.dev.yml logs -f api
-docker compose -f compose.dev.yml logs -f postgres
-docker compose -f compose.dev.yml logs -f api web   # multiple
+docker compose -f infra/docker/compose.__env__.yml logs -f           # all services
+docker compose -f infra/docker/compose.__env__.yml logs -f web
+docker compose -f infra/docker/compose.__env__.yml logs -f api
+docker compose -f infra/docker/compose.__env__.yml logs -f postgres
+docker compose -f infra/docker/compose.__env__.yml logs -f api web   # multiple
 ```
 
 For production log queries, alerting setup, and incident playbooks see [docs/ops-manual.md](docs/ops-manual.md).
