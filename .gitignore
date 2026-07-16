@@ -31,3 +31,4 @@ es_data/
 # Certbot
 certbot/conf/
 certbot/www/
+cloudflare.ini

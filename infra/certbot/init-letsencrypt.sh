@@ -1,49 +1,49 @@
 #!/bin/bash
-# Run this ONCE on first deployment to obtain Let's Encrypt certificates
+# Run this ONCE on first deployment to obtain Let's Encrypt certificates via Cloudflare DNS-01 challenge.
+# Requires Cloudflare API token in ./certbot/cloudflare.ini
 # Usage: ./init-letsencrypt.sh [staging|prod]
 
 set -e
 
 ENV=${1:-prod}
 EMAIL="admin@voidnull.io"
+CF_CREDENTIALS="/etc/letsencrypt/cloudflare.ini"
 
 if [ "$ENV" = "staging" ]; then
     DOMAINS=("staging.voidnull.io")
     COMPOSE_FILE="compose.staging.yml"
-    STAGING_FLAG="--staging"  # Remove for real cert after testing
+    STAGING_FLAG="--staging"
 else
     DOMAINS=("voidnull.io" "www.voidnull.io" "voidnull.ai" "www.voidnull.ai")
     COMPOSE_FILE="compose.prod.yml"
     STAGING_FLAG=""
 fi
 
-DATA_PATH="./certbot"
-RSA_KEY_SIZE=4096
+CLOUDFLARE_INI="./certbot/cloudflare.ini"
 
-echo "### Creating dummy certs for Nginx to start..."
-mkdir -p "$DATA_PATH/conf/live/${DOMAINS[0]}"
-openssl req -x509 -nodes -newkey rsa:$RSA_KEY_SIZE -days 1 \
-    -keyout "$DATA_PATH/conf/live/${DOMAINS[0]}/privkey.pem" \
-    -out "$DATA_PATH/conf/live/${DOMAINS[0]}/fullchain.pem" \
-    -subj "/CN=localhost"
+if [ ! -f "$CLOUDFLARE_INI" ]; then
+    echo "ERROR: $CLOUDFLARE_INI not found."
+    echo "Create it with: dns_cloudflare_api_token = YOUR_TOKEN"
+    exit 1
+fi
 
-echo "### Starting Nginx with dummy certs..."
-docker compose -f "$COMPOSE_FILE" up -d nginx
+if [ "$(stat -c '%a' "$CLOUDFLARE_INI" 2>/dev/null || stat -f '%A' "$CLOUDFLARE_INI")" != "600" ]; then
+    echo "WARNING: $CLOUDFLARE_INI permissions should be 600. Fixing..."
+    chmod 600 "$CLOUDFLARE_INI"
+fi
 
-echo "### Deleting dummy certs..."
-rm -rf "$DATA_PATH/conf/live/${DOMAINS[0]}"
-
-echo "### Requesting real Let's Encrypt cert..."
+echo "### Requesting Let's Encrypt cert via Cloudflare DNS-01..."
 DOMAIN_ARGS=""
 for d in "${DOMAINS[@]}"; do
     DOMAIN_ARGS="$DOMAIN_ARGS -d $d"
 done
 
 docker compose -f "$COMPOSE_FILE" run --rm certbot certonly \
-    --webroot \
-    --webroot-path=/var/www/certbot \
+    --dns-cloudflare \
+    --dns-cloudflare-credentials "$CF_CREDENTIALS" \
+    --dns-cloudflare-propagation-seconds 60 \
     $STAGING_FLAG \
-    --email $EMAIL \
+    --email "$EMAIL" \
     --agree-tos \
     --no-eff-email \
     $DOMAIN_ARGS
@@ -51,5 +51,5 @@ docker compose -f "$COMPOSE_FILE" run --rm certbot certonly \
 echo "### Reloading Nginx..."
 docker compose -f "$COMPOSE_FILE" exec nginx nginx -s reload
 
-echo "### Done! Certs are in $DATA_PATH/conf/live/"
+echo "### Done! Certs are in ./certbot/conf/live/"
 echo "### Auto-renewal is handled by the certbot container (runs every 12h)"
