@@ -50,18 +50,22 @@ if [ "$(stat -c '%a' "$CLOUDFLARE_INI" 2>/dev/null || stat -f '%A' "$CLOUDFLARE_
 fi
 
 # Create a placeholder self-signed cert so nginx can start before real certs arrive.
-# certbot will replace these files with real Let's Encrypt certs after issuance.
+# Remove any existing placeholder (regular files) so certbot can write its own symlinks.
 CERT_DIR="./certbot/conf/live/${DOMAINS[0]}"
-if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
-    echo "### Creating placeholder self-signed certificate for nginx bootstrap..."
+if [ ! -L "$CERT_DIR/fullchain.pem" ]; then
+    # No real certbot-managed cert exists (symlink absent) — create placeholder for nginx
+    rm -rf "$CERT_DIR"
     mkdir -p "$CERT_DIR"
     openssl req -x509 -nodes -newkey rsa:2048 \
         -keyout "$CERT_DIR/privkey.pem" \
         -out "$CERT_DIR/fullchain.pem" \
         -days 1 \
         -subj "/CN=${DOMAINS[0]}" 2>/dev/null
-    echo "### Placeholder cert created."
+    echo "### Placeholder cert created for nginx bootstrap."
 fi
+
+echo "### Removing placeholder so certbot can write real cert symlinks..."
+rm -rf "$CERT_DIR"
 
 echo "### Requesting Let's Encrypt cert via Cloudflare DNS-01..."
 DOMAIN_ARGS=""
