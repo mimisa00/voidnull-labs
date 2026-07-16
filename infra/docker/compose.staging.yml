@@ -18,21 +18,24 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
 
   api:
-    image: ghcr.io/${GITHUB_REPO}/api:staging
+  #image: ghcr.io/${GITHUB_REPO}/api:staging
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-voidnull_staging}
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_2FA_SECRET: ${JWT_2FA_SECRET}
@@ -52,7 +55,9 @@ services:
       retries: 3
 
   web:
-    image: ghcr.io/${GITHUB_REPO}/web:staging
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
     environment:
       NEXT_PUBLIC_API_URL: https://staging.voidnull.io/api
       NEXT_PUBLIC_WS_URL: https://staging.voidnull.io
