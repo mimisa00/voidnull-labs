@@ -12,7 +12,7 @@ RUN npm ci --workspace=@voidnull/api --workspace=@voidnull/database
 COPY packages/database ./packages/database
 COPY apps/api ./apps/api
 
-RUN cd packages/database && npx prisma generate
+RUN cd packages/database && npx prisma generate && npx tsc
 RUN cd apps/api && npm run build
 
 # ── Stage 2: Runner ───────────────────────────────────────────────────────────
@@ -22,7 +22,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/database/node_modules ./packages/database/node_modules
+COPY --from=builder /app/packages/database/package.json ./packages/database/package.json
+COPY --from=builder /app/packages/database/dist ./packages/database/dist
 COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
