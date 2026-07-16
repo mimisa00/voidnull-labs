@@ -64,8 +64,10 @@ if [ ! -L "$CERT_DIR/fullchain.pem" ]; then
     echo "### Placeholder cert created for nginx bootstrap."
 fi
 
-echo "### Removing placeholder so certbot can write real cert symlinks..."
+echo "### Removing placeholder and stale certbot state so cert gets clean path..."
 rm -rf "$CERT_DIR"
+rm -rf "./certbot/conf/archive/${DOMAINS[0]}"
+rm -f  "./certbot/conf/renewal/${DOMAINS[0]}.conf"
 
 echo "### Requesting Let's Encrypt cert via Cloudflare DNS-01..."
 DOMAIN_ARGS=""
