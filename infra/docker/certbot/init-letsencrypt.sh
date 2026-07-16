@@ -17,7 +17,7 @@ CF_CREDENTIALS="/run/secrets/cloudflare.ini"
 if [ "$ENV" = "staging" ]; then
     DOMAINS=("staging.voidnull.io")
     COMPOSE_FILE="compose.staging.yml"
-    STAGING_FLAG="--staging"
+    STAGING_FLAG=""
 else
     DOMAINS=("voidnull.io" "www.voidnull.io" "voidnull.ai" "www.voidnull.ai")
     COMPOSE_FILE="compose.prod.yml"
