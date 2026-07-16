@@ -37,6 +37,20 @@ if [ "$(stat -c '%a' "$CLOUDFLARE_INI" 2>/dev/null || stat -f '%A' "$CLOUDFLARE_
     chmod 600 "$CLOUDFLARE_INI"
 fi
 
+# Create a placeholder self-signed cert so nginx can start before real certs arrive.
+# certbot will replace these files with real Let's Encrypt certs after issuance.
+CERT_DIR="./certbot/conf/live/${DOMAINS[0]}"
+if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+    echo "### Creating placeholder self-signed certificate for nginx bootstrap..."
+    mkdir -p "$CERT_DIR"
+    openssl req -x509 -nodes -newkey rsa:2048 \
+        -keyout "$CERT_DIR/privkey.pem" \
+        -out "$CERT_DIR/fullchain.pem" \
+        -days 1 \
+        -subj "/CN=${DOMAINS[0]}" 2>/dev/null
+    echo "### Placeholder cert created."
+fi
+
 echo "### Requesting Let's Encrypt cert via Cloudflare DNS-01..."
 DOMAIN_ARGS=""
 for d in "${DOMAINS[@]}"; do
@@ -51,10 +65,14 @@ docker compose -f "$COMPOSE_FILE" run --rm certbot certonly \
     --email "$EMAIL" \
     --agree-tos \
     --no-eff-email \
+    --force-renewal \
     $DOMAIN_ARGS
 
-echo "### Starting Nginx with real certs..."
-docker compose -f "$COMPOSE_FILE" up -d nginx
+echo "### Starting all services..."
+docker compose -f "$COMPOSE_FILE" up -d
+
+echo "### Reloading Nginx with real certificates..."
+docker compose -f "$COMPOSE_FILE" exec nginx nginx -s reload
 
 echo "### Done! Certs are in ./certbot/conf/live/"
 echo "### Auto-renewal is handled by the certbot container (runs every 12h)"
