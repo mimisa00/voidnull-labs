@@ -10,6 +10,10 @@ RUN npm ci --workspace=@voidnull/web
 
 COPY apps/web ./apps/web
 
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001/api
+ARG NEXT_PUBLIC_WS_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN cd apps/web && npm run build
 

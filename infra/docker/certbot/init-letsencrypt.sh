@@ -1,7 +1,9 @@
 #!/bin/bash
 # Run this ONCE on first deployment to obtain Let's Encrypt certificates via Cloudflare DNS-01 challenge.
 # Must be run from the project root: bash infra/docker/certbot/init-letsencrypt.sh [staging|prod]
-# Requires: infra/docker/certbot/cloudflare.ini with dns_cloudflare_api_token
+# Requires:
+#   infra/docker/.env.staging (or .env.prod) with POSTGRES_USER, POSTGRES_PASSWORD, etc.
+#   infra/docker/certbot/cloudflare.ini with dns_cloudflare_api_token
 
 set -e
 
@@ -20,6 +22,16 @@ else
     DOMAINS=("voidnull.io" "www.voidnull.io" "voidnull.ai" "www.voidnull.ai")
     COMPOSE_FILE="compose.prod.yml"
     STAGING_FLAG=""
+fi
+
+# Use an environment-specific .env file so infra/docker/.env (dev config) is NOT auto-loaded.
+# This prevents POSTGRES_DB=voidnull_dev and other dev values from polluting staging/prod.
+ENV_FILE=".env.${ENV}"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "ERROR: $ENV_FILE not found."
+    echo "Copy the example and fill in secrets:"
+    echo "  cp .env.${ENV}.example $ENV_FILE"
+    exit 1
 fi
 
 CLOUDFLARE_INI="./certbot/cloudflare.ini"
@@ -57,7 +69,7 @@ for d in "${DOMAINS[@]}"; do
     DOMAIN_ARGS="$DOMAIN_ARGS -d $d"
 done
 
-docker compose -f "$COMPOSE_FILE" run --rm certbot certonly \
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm certbot certonly \
     --dns-cloudflare \
     --dns-cloudflare-credentials "$CF_CREDENTIALS" \
     --dns-cloudflare-propagation-seconds 60 \
@@ -69,10 +81,11 @@ docker compose -f "$COMPOSE_FILE" run --rm certbot certonly \
     $DOMAIN_ARGS
 
 echo "### Starting all services..."
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d
 
 echo "### Reloading Nginx with real certificates..."
-docker compose -f "$COMPOSE_FILE" exec nginx nginx -s reload
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec nginx nginx -s reload
 
 echo "### Done! Certs are in ./certbot/conf/live/"
-echo "### Auto-renewal is handled by the certbot container (runs every 12h)"
+echo "### Auto-renewal is handled by the certbot container (runs every 12h)."
+echo "### Nginx reloads every 6h to pick up renewed certs automatically."
