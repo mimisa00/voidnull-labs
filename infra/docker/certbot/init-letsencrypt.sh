@@ -1,9 +1,12 @@
 #!/bin/bash
 # Run this ONCE on first deployment to obtain Let's Encrypt certificates via Cloudflare DNS-01 challenge.
-# Requires Cloudflare API token in ./certbot/cloudflare.ini
-# Usage: ./init-letsencrypt.sh [staging|prod]
+# Must be run from the project root: bash infra/docker/certbot/init-letsencrypt.sh [staging|prod]
+# Requires: infra/docker/certbot/cloudflare.ini with dns_cloudflare_api_token
 
 set -e
+
+# Always resolve relative to infra/docker/ regardless of where script is called from
+cd "$(dirname "$0")/.."
 
 ENV=${1:-prod}
 EMAIL="admin@voidnull.io"
@@ -23,7 +26,9 @@ CLOUDFLARE_INI="./certbot/cloudflare.ini"
 
 if [ ! -f "$CLOUDFLARE_INI" ]; then
     echo "ERROR: $CLOUDFLARE_INI not found."
-    echo "Create it with: dns_cloudflare_api_token = YOUR_TOKEN"
+    echo "Copy the example and fill in your token:"
+    echo "  cp certbot/cloudflare.ini.example certbot/cloudflare.ini"
+    echo "  chmod 600 certbot/cloudflare.ini"
     exit 1
 fi
 

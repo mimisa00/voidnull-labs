@@ -29,9 +29,9 @@ voidnull/
 │   ├── database/     # Prisma schema + seed
 │   └── tsconfig/     # Shared TS config
 ├── infra/
-│   ├── docker/       # Compose files (dev/staging/prod)
-│   ├── nginx/        # Nginx configs
-│   └── certbot/      # Let's Encrypt scripts
+│   ├── docker/       # Compose files (dev/staging/prod) + .env
+│   │   └── certbot/  # Let's Encrypt init script + Cloudflare credentials
+│   └── nginx/        # Nginx configs
 ├── monitoring/       # Prometheus + Grafana + ELK
 ├── .github/          # GitHub Actions CI/CD
 ├── .gitlab-ci.yml    # GitLab CI/CD
@@ -100,13 +100,17 @@ voidnull/
 > Other environments pick up the new migration automatically on next startup — no manual steps needed.
 
 ```bash
-cp .env.example .env
-docker compose -f infra/docker/compose.dev.yml up -d
+# .env lives in infra/docker/ — that's where docker compose looks for it
+cp .env.example infra/docker/.env
+
+# All docker compose commands are run from infra/docker/
+cd infra/docker
+docker compose -f compose.dev.yml up -d
 # API:  http://localhost:3001/api
 # Web:  http://localhost:3000
 # Docs: http://localhost:3001/api/docs
 
-# docker compose -f infra/docker/compose.dev.yml down
+# docker compose -f compose.dev.yml down
 ```
 
 **Default accounts after seed:**
@@ -141,14 +145,52 @@ Permissions format: `users:create`, `users:read`, `roles:list`, `permissions:lis
 
 Full Swagger docs: `http://localhost:3001/api/docs`
 
-## check all services logs
-# all services log
-docker compose -f infra/docker/compose.dev.yml logs -f
+## Logs
 
-# single service log
-docker compose -f infra/docker/compose.dev.yml logs -f web
-docker compose -f infra/docker/compose.dev.yml logs -f api
-docker compose -f infra/docker/compose.dev.yml logs -f postgres
+```bash
+# Run from infra/docker/
+docker compose -f compose.dev.yml logs -f           # all services
+docker compose -f compose.dev.yml logs -f web
+docker compose -f compose.dev.yml logs -f api
+docker compose -f compose.dev.yml logs -f postgres
+docker compose -f compose.dev.yml logs -f api web   # multiple
+```
 
-# multiple services log
-docker compose -f infra/docker/compose.dev.yml logs -f api web
+## Staging / Production Deployment
+
+### 1. Environment variables
+
+```bash
+cp .env.example infra/docker/.env
+# Edit infra/docker/.env — fill in secrets (POSTGRES_PASSWORD, JWT_SECRET, etc.)
+```
+
+### 2. Let's Encrypt certificates (first deploy only)
+
+Domain DNS is managed on Cloudflare. Certificates use DNS-01 challenge via Cloudflare API — no HTTP server needed during validation.
+
+```bash
+# Create Cloudflare API token credentials
+cp infra/docker/certbot/cloudflare.ini.example infra/docker/certbot/cloudflare.ini
+chmod 600 infra/docker/certbot/cloudflare.ini
+# Edit cloudflare.ini — paste your Cloudflare API token
+# Token needs Zone:DNS:Edit permission for the target domains
+```
+
+```bash
+# Test with Let's Encrypt staging first (no rate limits)
+bash infra/docker/certbot/init-letsencrypt.sh staging
+
+# If staging succeeds, issue the real cert
+bash infra/docker/certbot/init-letsencrypt.sh prod
+```
+
+After initial issuance, auto-renewal runs every 12 hours inside the certbot container — no manual steps needed.
+
+### 3. Start services
+
+```bash
+cd infra/docker
+docker compose -f compose.staging.yml up -d   # staging
+docker compose -f compose.prod.yml up -d      # production
+```
