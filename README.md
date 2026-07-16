@@ -194,3 +194,19 @@ cd infra/docker
 docker compose -f compose.staging.yml up -d   # staging
 docker compose -f compose.prod.yml up -d      # production
 ```
+
+> **SSL 雞生蛋問題**
+>
+> Nginx 啟動時會直接讀取 `/etc/letsencrypt/live/<domain>/fullchain.pem`。若憑證不存在，nginx 無法啟動，導致錯誤：
+> ```
+> cannot load certificate ".../fullchain.pem": No such file or directory
+> ```
+> **正確的首次啟動順序是先跑 Step 2 取得憑證，再執行 Step 3。**
+> `init-letsencrypt.sh` 使用 DNS-01 challenge，不需要 nginx 先起來，跑完後憑證就位，nginx 才能正常啟動。
+>
+> 若誤操作（先跑了 `docker compose up`），重置方式：
+> ```bash
+> docker compose -f compose.staging.yml down
+> bash certbot/init-letsencrypt.sh staging   # 取得憑證
+> docker compose -f compose.staging.yml up -d --build
+> ```

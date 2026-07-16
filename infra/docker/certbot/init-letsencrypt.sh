@@ -53,8 +53,8 @@ docker compose -f "$COMPOSE_FILE" run --rm certbot certonly \
     --no-eff-email \
     $DOMAIN_ARGS
 
-echo "### Reloading Nginx..."
-docker compose -f "$COMPOSE_FILE" exec nginx nginx -s reload
+echo "### Starting Nginx with real certs..."
+docker compose -f "$COMPOSE_FILE" up -d nginx
 
 echo "### Done! Certs are in ./certbot/conf/live/"
 echo "### Auto-renewal is handled by the certbot container (runs every 12h)"
