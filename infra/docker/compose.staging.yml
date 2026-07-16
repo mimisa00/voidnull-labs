@@ -38,6 +38,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-voidnull_staging}
     command: >
       sh -c "node /app/node_modules/.bin/prisma migrate deploy
+      --schema=/app/packages/database/prisma/schema.prisma &&
+      node /app/node_modules/.bin/prisma db seed
       --schema=/app/packages/database/prisma/schema.prisma"
     depends_on:
       postgres:
