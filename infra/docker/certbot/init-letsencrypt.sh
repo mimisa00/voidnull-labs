@@ -69,7 +69,7 @@ for d in "${DOMAINS[@]}"; do
     DOMAIN_ARGS="$DOMAIN_ARGS -d $d"
 done
 
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm certbot certonly \
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm --entrypoint certbot certbot certonly \
     --dns-cloudflare \
     --dns-cloudflare-credentials "$CF_CREDENTIALS" \
     --dns-cloudflare-propagation-seconds 60 \
