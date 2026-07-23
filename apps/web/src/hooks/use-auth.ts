@@ -28,6 +28,8 @@ export function useAuth() {
     try { await authApi.logout(refreshToken || undefined); } catch {}
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    // Also clear cookies
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     setUser(null);
     router.push('/login');
   };
