@@ -16,7 +16,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
+    if (!loading && !user) {
+      // Prevent redirect loop by checking current path
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (pathname !== '/login') {
+        router.push('/login');
+      }
+    }
   }, [user, loading, router]);
 
   useEffect(() => {
