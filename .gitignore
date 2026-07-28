@@ -29,6 +29,6 @@ grafana_data/
 es_data/
 
 # Certbot
-certbot/conf/
-certbot/www/
+infra/docker/certbot/conf/
+infra/docker/certbot/www/
 cloudflare.ini
