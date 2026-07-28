@@ -1,455 +1,456 @@
-# MIMISA OS — 統合 PRD v2.0 (繁體中文版) (1)
+# MIMISA OS — Integrated PRD v2.0 (English Translation)
 
-## 1. 項目概述
+> **Translator's note:** 籌碼房 is rendered as **"Cage"** (the standard casino-industry term for this function — also confirmed by the source document's own DB table name `cage_assets`), and 賭廳 as **"Gaming Hall."** All other English terms follow the glosses already given in the source document (e.g., NN Chip, CC Chip, Roller, Buy-in, Cash-out).
 
-### 1.1 項目名稱
+## 1. Project Overview
 
-MIMISA 賭廳籌碼房電算化及帳戶管理系統 (MIMISA OS)
+### 1.1 Project Name
 
-### 1.2 項目目的
+MIMISA Gaming Hall Cage Computerization and Account Management System (MIMISA OS)
 
-將現有手工記錄方式的賭廳籌碼房營運電算化，實現買入/兌現/滾碼/佣金/積分結算全流程自動化。本系統達成以下目標：
+### 1.2 Project Purpose
 
-- 即時追蹤籌碼房總資產（現金、NN籌碼、CC籌碼、客戶預存金、遊戲中金額、佣金/積分）
-- 區分計算莊家滾碼與內部滾碼，自動生成月末莊家結算依據數據
-- 即時計算客戶-代理-副公司層級結構的佣金分配
-- 對所有交易適用審批工作流並保存審計日誌
-- 透過分店間統合報表支援總部層面的經營決策
-- 分離提供營運入口與客戶入口，為各角色提供最佳化介面
+This project computerizes the gaming hall cage's currently manual, paper-based record-keeping, achieving full-process automation of buy-in / cash-out / rolling / commission / points settlement. The system is intended to achieve the following goals:
 
-### 1.3 術語定義
+- Real-time tracking of the Cage's total assets (cash, NN chips, CC chips, customer deposit balances, in-play amounts, commission/points)
+- Separately calculate House Rolling and Internal Rolling, automatically generating the basis data for month-end House settlement
+- Real-time calculation of commission distribution across the Customer–Agent–Sub-Company hierarchy
+- Apply an approval workflow to all transactions and retain audit logs
+- Support head-office-level business decisions through consolidated cross-branch reporting
+- Provide separate Operations Portal and Client Portal entry points, each optimized for its respective user roles
 
-| 術語 | 定義 |
+### 1.3 Terminology
+
+| Term | Definition |
 | --- | --- |
-| NN籌碼 (Non-Negotiable Chip) | 從莊家（賭場）購買的不可兌換籌碼。僅可在遊戲桌使用。買入時計算滾碼 |
-| CC籌碼 (Cash Chip / Color Chip) | 遊戲勝利時支付的可兌換現金籌碼 |
-| 莊家滾碼 | 與莊家（賭場）的NN籌碼交易（購買/交換）中產生的滾碼。月末莊家結算的基準 |
-| 內部滾碼 | 按客戶實際遊戲進行產生的滾碼。佣金/積分結算的基準 |
-| 滾碼員 (Roller) | 負責客戶籌碼交換並計算滾碼的現場人員。隸屬代理 |
-| 買入 (Buy-in) | 客戶以現金或預存金購買NN籌碼的行為 |
-| 兌現 (Cash-out) | 客戶將持有籌碼(CC/NN)兌換為現金的行為 |
-| 預存金 | 客戶存放在籌碼房的現金。買入時可使用 |
-| 遊戲中金額 | 目前在桌上進行中的籌碼總額。籌碼房資產追蹤必需 |
-| 結算率 | 莊家WIN時賭廳收取的比率（例：50%） |
-| FIFO | 先進先出。積分扣減時從最早累積的開始扣減 |
+| NN Chip (Non-Negotiable Chip) | Non-redeemable chips purchased from the House (casino). Usable only at the gaming table. Rolling is calculated at time of buy-in |
+| CC Chip (Cash Chip / Color Chip) | Redeemable cash chips paid out when a game is won |
+| House Rolling | Rolling generated from NN chip transactions (purchase/exchange) with the House (casino). Basis for month-end House settlement |
+| Internal Rolling | Rolling generated from a customer's actual gameplay. Basis for commission/points settlement |
+| Roller | On-site staff responsible for exchanging customer chips and calculating rolling. Reports to an Agent |
+| Buy-in | The act of a customer purchasing NN chips with cash or Deposit Balance |
+| Cash-out | The act of a customer exchanging held chips (CC/NN) for cash |
+| Deposit Balance | Cash a customer has placed on deposit at the Cage. Usable for buy-ins |
+| In-Play Amount | The total chip amount currently in play at the table. Required for Cage asset tracking |
+| Settlement Rate | The rate the Gaming Hall collects when the House wins (e.g., 50%) |
+| FIFO | First In, First Out. When points are deducted, the earliest-accumulated points are deducted first |
 
-## 2. 系統架構
+## 2. System Architecture
 
-### 2.1 系統構成概述
+### 2.1 System Composition Overview
 
-本系統提供兩種使用環境。
+The system provides two operating environments.
 
-**營運入口 (Operations Portal)**
+**Operations Portal**
 
-- 使用者：主管、分店管理員、籌碼房職員、樓面職員
-- 存取環境：分店內部網路、桌面/自助終端(iPad)
-- 主要功能：籌碼房資產管理、遊戲上傳、審批處理、結算、報表
+- Users: Master, Branch Manager, Cage Staff, Floor Staff
+- Access environment: Branch internal network, desktop / self-service terminal (iPad)
+- Main functions: Cage asset management, game upload, approval processing, settlement, reporting
 
-**客戶入口 (Client Portal)**
+**Client Portal**
 
-- 使用者：代理、副公司、滾碼員、一般客戶(Player)
-- 存取環境：行動網頁(響應式) + 桌面網頁。允許外部網路存取
-- 主要功能：帳戶查詢、餘額確認、資金轉帳、遊戲紀錄、佣金/積分查詢、存取款申請、通知接收
+- Users: Agent, Sub-Company, Roller, general customer (Player)
+- Access environment: Mobile web (responsive) + desktop web. External network access allowed
+- Main functions: Account inquiry, balance confirmation, fund transfer, game records, commission/points inquiry, deposit/withdrawal requests, notification receipt
 
-各入口完全分離，共享單一DB及單一API伺服器。
+Each portal is fully separated, sharing a single DB and a single API server.
 
-### 2.2 技術棧建議
+### 2.2 Recommended Technology Stack
 
-由開發者自行選擇，但須滿足以下要求：
+To be chosen by the developer, but must satisfy the following requirements:
 
-- **前端：** 基於Web的SPA。營運入口與客戶入口分離構建。相容自助終端(iPad)及桌面瀏覽器。響應式必需
-- **後端：** RESTful API或GraphQL。支援WebSocket用於即時通知
-- **資料庫：** RDBMS必需（保證交易完整性）。所有金額運算使用整數（披索單位）或DECIMAL(18,2)。禁止使用浮點數(float/double)
-- **伺服器：** 使用雲端伺服器（營運入口透過內部網路VPN存取，客戶入口允許外部存取）
-- **安全：** 全段SSL/TLS、DB加密、RBAC存取控制
+- **Frontend:** Web-based SPA. Operations Portal and Client Portal built separately. Compatible with self-service terminal (iPad) and desktop browsers. Responsive design required
+- **Backend:** RESTful API or GraphQL. WebSocket support for real-time notifications
+- **Database:** RDBMS required (to guarantee transactional integrity). All monetary calculations use integers (peso units) or DECIMAL(18,2). Floating point (float/double) is prohibited
+- **Server:** Use cloud servers (Operations Portal accessed via internal-network VPN, Client Portal allows external access)
+- **Security:** End-to-end SSL/TLS, DB encryption, RBAC access control
 
-### 2.3 部署環境
+### 2.3 Deployment Environment
 
-- 營運伺服器：雲端伺服器（透過VPN進行內部網路存取配置）
-- 備份：每日1次自動完整備份 + 交易日誌即時備份
-- 雲端鏡像：增設備份伺服器 `[待確認：具體鏡像方案需討論]`
-- 伺服器雙重化：建議Active-Standby配置（故障時自動切換）
+- Operations server: Cloud server (configured for internal-network access via VPN)
+- Backup: 1x daily automatic full backup + real-time transaction log backup
+- Cloud mirroring: Additional backup server `[TBD: specific mirroring plan needs discussion]`
+- Server redundancy: Active-Standby configuration recommended (automatic failover)
 
-### 2.4 系統可用性要求
+### 2.4 System Availability Requirements
 
-- 運行率目標：99.9%（年停機8.76小時以內）
-- 故障恢復目標(RTO)：30分鐘以內
-- 數據損失容許範圍(RPO)：0（交易數據零損失）
+- Uptime target: 99.9% (downtime within 8.76 hours/year)
+- Recovery Time Objective (RTO): within 30 minutes
+- Recovery Point Objective (RPO): 0 (zero transaction data loss)
 
-## 3. 帳戶結構及權限 (RBAC)
+## 3. Account Structure and Permissions (RBAC)
 
-### 3.1 帳戶層級結構
+### 3.1 Account Hierarchy
 
 ```
-主管帳戶 (Master)
- └─ 分店管理員帳戶 (Branch Manager) — 每分店1個
-     ├─ 籌碼房職員帳戶 (Cage Staff) — 分店管理員授予權限
-     ├─ 樓面職員帳戶 (Floor Staff) — 僅可上傳請求
-     ├─ 副公司帳戶 (Sub-Company)
-     │   └─ 代理帳戶 (Agent)
-     │       ├─ 滾碼員帳戶 (Roller) — 1代理：N滾碼員
-     │       └─ 一般帳戶 (Player, 客戶)
-     └─ 獨立代理帳戶（無副公司直屬分店）
-         ├─ 滾碼員帳戶
-         └─ 一般帳戶
+Master Account
+ └─ Branch Manager Account — 1 per branch
+     ├─ Cage Staff Account — permissions granted by Branch Manager
+     ├─ Floor Staff Account — upload requests only
+     ├─ Sub-Company Account
+     │   └─ Agent Account
+     │       ├─ Roller Account — 1 Agent : N Rollers
+     │       └─ General Account (Player, customer)
+     └─ Independent Agent Account (not under a Sub-Company)
+         ├─ Roller Account
+         └─ General Account
 ```
 
-### 3.2 各帳戶類型詳細權限
+### 3.2 Detailed Permissions by Account Type
 
-#### 3.2.1 主管帳戶 (Master)
+#### 3.2.1 Master Account
 
-- **數據查詢：** 全分店（MIMISA等）統合數據查詢
-- **篩選：** 按分店、期間、代理的滾碼統計
-- **帳戶管理：** 分店管理員帳戶創建/停用
-- **日誌查閱：** 全部審計日誌
-- **修改/刪除：** 數據修改及刪除不可（維持完整性）
-- **籌碼房資產：** 全分店籌碼房總資產現況查詢
-- **錢包持有：** 無
-- **入口：** 營運入口存取
+- **Data inquiry:** Consolidated data inquiry across all branches (MIMISA, etc.)
+- **Filtering:** Rolling statistics filterable by branch, period, agent
+- **Account management:** Create/deactivate Branch Manager accounts
+- **Log access:** All audit logs
+- **Modify/delete:** Data modification and deletion not permitted (integrity preservation)
+- **Cage assets:** View total Cage asset status across all branches
+- **Wallet holding:** None
+- **Portal:** Operations Portal access
 
-#### 3.2.2 分店管理員帳戶 (Branch Manager)
+#### 3.2.2 Branch Manager Account
 
-- **數據管理：** 該分店所有帳戶及交易管理
-- **審批權限：** 遊戲上傳最終審批/駁回、手續費提款審批/駁回、帳戶創建最終審批、資金轉帳審批/駁回
-- **手動調整：** 可手動調整錢包餘額（錯誤修正、特別審批）。調整時必須輸入原因，自動記錄日誌
-- **籌碼房資產：** 該分店籌碼房總資產即時儀表板
-- **下級帳戶管理：** 副公司、代理、樓面職員、籌碼房職員、一般帳戶的創建/停用
-- **佣金/積分設定：** 各遊戲佣金率設定、積分累積率設定、客戶「顯示/隱藏」設定
-- **轉帳限額設定：** 各帳戶單次限額及每日限額設定、非關係轉帳例外審批
-- **日誌查閱：** 該分店全部日誌
-- **錢包持有：** 無
-- **入口：** 營運入口存取
+- **Data management:** Manages all accounts and transactions for that branch
+- **Approval authority:** Final approval/rejection of game uploads, commission-withdrawal approval/rejection, final approval of account creation, fund-transfer approval/rejection
+- **Manual adjustment:** Can manually adjust wallet balances (error correction, special approval). Must enter a reason when adjusting; automatically logged
+- **Cage assets:** Real-time dashboard of that branch's total Cage assets
+- **Subordinate account management:** Create/deactivate Sub-Company, Agent, Floor Staff, Cage Staff, and General accounts
+- **Commission/points settings:** Set commission rate per game, set points accrual rate, set customer "Show/Hide" setting
+- **Transfer-limit settings:** Set per-transaction and daily limits per account, exception approval for non-hierarchy transfers
+- **Log access:** All logs for that branch
+- **Wallet holding:** None
+- **Portal:** Operations Portal access
 
-#### 3.2.3 籌碼房職員帳戶 (Cage Staff)
+#### 3.2.3 Cage Staff Account
 
-- **審批權限：** 在分店管理員委託範圍內可審批/駁回上傳
-- **上傳：** Buy-in/Cash-out表單輸入、遊戲上傳檢查員2角色
-- **客戶存取款處理：** 確認及處理客戶發起的存款/取款請求
-- **查詢：** 該分店交易查詢
-- **錢包持有：** 無
-- **備註：** 分店管理員設定權限範圍（可審批金額限額等）
-- **入口：** 營運入口存取
+- **Approval authority:** Can approve/reject uploads within the scope delegated by the Branch Manager
+- **Upload:** Buy-in/Cash-out form entry, Inspector 2 role for game uploads
+- **Customer deposit/withdrawal processing:** Confirm and process customer-initiated deposit/withdrawal requests
+- **Inquiry:** Transaction inquiry for that branch
+- **Wallet holding:** None
+- **Note:** Branch Manager sets the scope of authority (e.g., approvable amount limits)
+- **Portal:** Operations Portal access
 
-#### 3.2.4 樓面職員帳戶 (Floor Staff)
+#### 3.2.4 Floor Staff Account
 
-- **上傳：** 遊戲上傳數據輸入及審批請求提交（檢查員1角色）
-- **審批權限：** 無。僅可請求
-- **查詢：** 僅可查詢本人請求的上傳紀錄
-- **錢包持有：** 無
-- **入口：** 營運入口存取
+- **Upload:** Game upload data entry and submission of approval requests (Inspector 1 role)
+- **Approval authority:** None. Request only
+- **Inquiry:** Can view only upload records for requests made by this account
+- **Wallet holding:** None
+- **Portal:** Operations Portal access
 
-#### 3.2.5 副公司帳戶 (Sub-Company)
+#### 3.2.5 Sub-Company Account
 
-- **下級管理：** 所屬代理及其下級客戶的交易明細查詢
-- **佣金：** 勝負制手續費累積（例：勝負5%，分店管理員設定）
-- **提款：** 可請求手續費提款（需分店管理員審批）
-- **資金分配：** 可向所屬代理分配營運資金（需分店管理員審批）
-- **報表：** 下級代理月度業績、匯總報表
-- **修改/刪除：** 不可
-- **錢包持有：** 無（佣金餘額以獨立Commission Wallet管理）
-- **入口：** 客戶入口存取
+- **Subordinate management:** Inquiry into transaction details for its Agents and their subordinate customers
+- **Commission:** Accrues win/loss-based commission (e.g., 5% of win/loss, set by Branch Manager)
+- **Withdrawal:** May request commission withdrawal (requires Branch Manager approval)
+- **Fund distribution:** May distribute operating funds to its Agents (requires Branch Manager approval)
+- **Reports:** Monthly performance and summary reports for subordinate Agents
+- **Modify/delete:** Not permitted
+- **Wallet holding:** None (commission balance managed in a separate Commission Wallet)
+- **Portal:** Client Portal access
 
-#### 3.2.6 代理帳戶 (Agent)
+#### 3.2.6 Agent Account
 
-- **雙重角色：** 作為代理同時可直接進行遊戲
-- **下級管理：** 所屬客戶的買入/兌現/滾碼明細查詢
-- **佣金：** 各遊戲佣金即時累積
-    - A遊戲：滾碼佣金（例：1.4%）
-    - B遊戲：勝負佣金（例：40%）`[開發後停用 — 目前未使用遊戲選項，為擴展性保留]`
-    - C遊戲：滾碼 + 勝負可並行 `[開發後停用 — 目前未使用遊戲選項，為擴展性保留]`
-    - 佣金率由分店管理員按代理、遊戲個別設定
-- **提款：** 可請求手續費提款（需分店管理員審批）
-- **積分控制：** 下級客戶積分累積率設定（0~基本率）、「顯示/隱藏」設定
-- **報表：** 客戶別滾碼、買入、兌現、佣金摘要
-- **錢包持有：** Real Money錢包、NN錢包、CC錢包（本人遊戲時）
-- **入口：** 客戶入口存取
+- **Dual role:** Can act as an Agent while also playing directly
+- **Subordinate management:** Inquiry into buy-in/cash-out/rolling details for its customers
+- **Commission:** Real-time accrual of commission per game type
+    - Game A: Rolling commission (e.g., 1.4%)
+    - Game B: Win/loss commission (e.g., 40%) `[disabled post-development — game option currently unused, reserved for extensibility]`
+    - Game C: Rolling + win/loss can apply concurrently `[disabled post-development — game option currently unused, reserved for extensibility]`
+    - Commission rates are set individually by the Branch Manager per Agent and per game
+- **Withdrawal:** May request commission withdrawal (requires Branch Manager approval)
+- **Points control:** Sets subordinate customers' points accrual rate (0 to base rate), "Show/Hide" setting
+- **Reports:** Per-customer summary of rolling, buy-in, cash-out, commission
+- **Wallet holding:** Real Money Wallet, NN Wallet, CC Wallet (when playing personally)
+- **Portal:** Client Portal access
 
-#### 3.2.7 滾碼員帳戶 (Roller)
+#### 3.2.7 Roller Account
 
-- **角色：** 負責客戶籌碼交換、滾碼計算、遊戲上傳數據輸入輔助
-- **關係：** 1滾碼員：N代理可能（一位滾碼員管理多位代理的客戶）
-- **權限：** 遊戲上傳時記錄於「交換員（滾碼員）」欄位。無獨立審批/提款權限
-- **錢包持有：** 無
-- **入口：** 客戶入口存取
+- **Role:** Responsible for customer chip exchange, rolling calculation, and assisting with game upload data entry
+- **Relationship:** 1 Roller : N Agents possible (one Roller may manage customers across multiple Agents)
+- **Permissions:** Recorded in the "Exchange Staff (Roller)" field at game upload. No independent approval/withdrawal authority
+- **Wallet holding:** None
+- **Portal:** Client Portal access
 
-#### 3.2.8 一般帳戶 (Player, 客戶)
+#### 3.2.8 General Account (Player, customer)
 
-- **查詢：** 本人餘額、交易明細
-- **佣金/積分：** 僅在代理或分店管理員設為「顯示」時顯示選單。預設為「隱藏」（選單本身不顯示）
-- **積分使用：** 僅可用於促銷（兌換券、住宿、餐飲等）。不可直接轉換為Real Money/CC/NN錢包
-- **資金轉帳：** 可向同分店內其他帳戶轉帳預存金（需分店管理員審批）
-- **存取款申請：** 可預先申請預存金存款/取款/買入
-- **密碼找回：** 本人認證後可重設
-- **錢包持有：** Real Money錢包、NN錢包、CC錢包
-- **入口：** 客戶入口存取
+- **Inquiry:** Own balance, transaction details
+- **Commission/points:** Menu shown only when set to "Show" by the Agent or Branch Manager. Default is "Hide" (menu itself not shown)
+- **Points usage:** Usable only for promotions (vouchers, accommodation, dining, etc.). Cannot be directly converted to Real Money/CC/NN wallet
+- **Fund transfer:** May transfer Deposit Balance to other accounts within the same branch (requires Branch Manager approval)
+- **Deposit/withdrawal requests:** May pre-submit requests for Deposit Balance deposit/withdrawal/buy-in
+- **Password recovery:** May reset after self-authentication
+- **Wallet holding:** Real Money Wallet, NN Wallet, CC Wallet
+- **Portal:** Client Portal access
 
-### 3.3 帳戶創建流程
+### 3.3 Account Creation Process
 
-**新客戶(Player)註冊：**
+**New customer (Player) registration:**
 
-1. 客戶本人或代理向籌碼房請求創建帳戶
-2. 籌碼房職員在系統中輸入資訊（護照號碼或MIMISA獎勵卡號碼作為Unique ID）
-3. 連結登記代理等客戶管理員
-4. 分店管理員最終審批 → 帳戶啟用
-5. 向客戶傳達初始登入資訊（臨時密碼）
-    - 籌碼房職員將列印的憑條（帳戶ID + 臨時密碼）直接交給客戶
-    - 或透過已登記手機號碼發送SMS（SMS閘道整合時）
-6. 客戶首次登入客戶入口 → 強制變更密碼 + 選擇性2FA設定指引
+1. The customer personally, or their Agent, requests account creation at the Cage
+2. Cage Staff enters the information into the system (passport number or MIMISA Rewards Card number as Unique ID)
+3. Links the registering Agent as the customer's account manager
+4. Branch Manager gives final approval → account activated
+5. Initial login information (temporary password) is delivered to the customer
+    - Cage Staff hands the customer a printed slip (Account ID + temporary password) directly
+    - Or sends it via registered mobile number by SMS (once the SMS gateway is integrated)
+6. Customer logs into the Client Portal for the first time → forced password change + optional 2FA setup guidance
 
-**Unique ID規則：**
+**Unique ID rules:**
 
-- Primary：護照號碼（國籍碼 + 護照號碼）
-- Alternative：MIMISA獎勵卡號碼
-- 系統內部ID：另行發放auto-increment或UUID
+- Primary: Passport number (country code + passport number)
+- Alternative: MIMISA Rewards Card number
+- Internal system ID: separately issued auto-increment ID or UUID
 
-**必要收集資訊：** 姓名（英文/當地語言）、護照號碼及國籍、出生日期、聯絡方式（手機）、照片（護照副本或拍攝）、負責代理ID（如適用）
+**Required information to collect:** Name (English/local language), passport number and nationality, date of birth, contact information (mobile phone), photo (passport copy or photograph taken), responsible Agent ID (if applicable)
 
-### 3.4 認證及安全
+### 3.4 Authentication and Security
 
-**營運入口：**
+**Operations Portal:**
 
-- 2FA：主管、分店管理員、副公司、代理、籌碼房職員、樓面職員 — 登入時必需（Google Authenticator）
-- 密碼重設：2FA認證後重設
-- 自動登出：10分鐘未使用時
-- IP限制：管理員帳戶IP白名單
+- 2FA: Required at login for Master, Branch Manager, Sub-Company, Agent, Cage Staff, Floor Staff (Google Authenticator)
+- Password reset: Performed after 2FA authentication
+- Auto logout: After 10 minutes of inactivity
+- IP restriction: IP whitelist for administrator accounts
 
-**客戶入口：**
+**Client Portal:**
 
-- 一般帳戶(Player)：2FA不適用（選擇事項）
-- 會話逾時：15分鐘未使用時
-- 金融交易再認證：轉帳/取款申請時必須輸入轉帳密碼
-- 設備管理：記錄首次登入設備，新設備登入時通知
+- General account (Player): 2FA not required (optional)
+- Session timeout: After 15 minutes of inactivity
+- Re-authentication for financial transactions: Transfer password required for transfer/withdrawal requests
+- Device management: First-login device is recorded; notification sent when logging in from a new device
 
-**通用：** 登入5次失敗時鎖定30分鐘、僅允許1個同時登入會話、API Rate Limiting每分鐘60次
+**General:** Account locked for 30 minutes after 5 failed login attempts; only 1 concurrent login session allowed; API rate limiting of 60 requests/minute
 
-## 4. 錢包系統
+## 4. Wallet System
 
-### 4.1 錢包結構
+### 4.1 Wallet Structure
 
-持有錢包的帳戶：**一般帳戶(Player)** 及 **代理帳戶(Agent, 本人遊戲時)**
+Accounts holding wallets: **General Account (Player)** and **Agent Account (Agent, when playing personally)**
 
-| 錢包類型 | 說明 | 入金路徑 | 出金路徑 |
+| Wallet Type | Description | Inflow Path | Outflow Path |
 | --- | --- | --- | --- |
-| Real Money錢包 | 現金餘額。買入時扣減，兌現時增加 | 現金存入（預存金）、兌現、轉帳接收 | 買入、現金提取、轉帳發送 |
-| NN錢包 | NN籌碼持有量。遊戲桌投入時扣減 | 買入（NN籌碼接收） | 遊戲投入、莊家退還 |
-| CC錢包 | CC籌碼持有量。遊戲勝利時增加 | 遊戲勝利 | 兌現（現金交換）、NN籌碼交換 |
-|  |  |  |  |
+| Real Money Wallet | Cash balance. Deducted at buy-in, increased at cash-out | Cash deposit (Deposit Balance), cash-out, transfer received | Buy-in, cash withdrawal, transfer sent |
+| NN Wallet | NN chip holdings. Deducted when placed at the gaming table | Buy-in (NN chips received) | Game wager, returned to House |
+| CC Wallet | CC chip holdings. Increased on game win | Game win | Cash-out (exchanged for cash), NN chip exchange |
 
-### 4.2 錢包餘額變動規則
+### 4.2 Wallet Balance Change Rules
 
-- 所有餘額變動必須透過交易記錄產生
-- 手動調整僅分店管理員可進行，必須輸入原因 + 自動記錄日誌
-- 不允許負數餘額（餘額不足時拒絕交易）
-- 所有金額以整數（披索單位）或DECIMAL(18,2)儲存。不進行四捨五入記錄至小數點
-- 轉帳申請時適用凍結(hold_amount)：審批前在餘額中顯示扣減但未傳遞給接收方
+- All balance changes must be generated through a transaction record
+- Manual adjustments may be made only by the Branch Manager, and a reason must be entered + is automatically logged
+- Negative balances are not allowed (transaction rejected if balance is insufficient)
+- All amounts are stored as integers (peso units) or DECIMAL(18,2). No rounding — recorded to the decimal point
+- A hold (hold_amount) applies to transfer requests: prior to approval, the amount is shown as deducted from the balance but has not yet been passed to the recipient
 
-### 4.3 佣金錢包 (Commission Wallet)
+### 4.3 Commission Wallet
 
-代理及副公司專用。遊戲結算時自動累積，遵循提款申請 → 分店管理員審批 → 現金支付流程。
+For Agent and Sub-Company use only. Accrues automatically at game settlement, following the flow: withdrawal request → Branch Manager approval → cash payment.
 
-| 項目 | 規則 |
+| Item | Rule |
 | --- | --- |
-| 累積時點 | 遊戲上傳審批完成時即時累積 |
-| 提款申請 | 代理/副公司在系統中申請 |
-| 提款審批 | 需分店管理員審批 |
-| 提款完成 | 審批時佣金餘額扣減 + 自動生成及發送電子結算收據(Invoice) |
+| Accrual point | Accrues immediately upon game upload approval |
+| Withdrawal request | Agent/Sub-Company applies within the system |
+| Withdrawal approval | Requires Branch Manager approval |
+| Withdrawal completion | Commission balance deducted at approval + electronic settlement receipt (Invoice) automatically generated and sent |
 
-## 5. 籌碼房總資產管理體系
+## 5. Cage Total Asset Management System
 
-### 5.1 籌碼房資產構成要素
+### 5.1 Components of Cage Assets
 
-籌碼房總資產以下列項目之和即時追蹤。**所有交易必須影響這些資產項目中的一項以上，借方/貸方必須保持平衡（複式簿記原則）。**
+The Cage's total assets are tracked in real time as the sum of the following items. **Every transaction must affect one or more of these asset items, and debits/credits must remain balanced (double-entry bookkeeping principle).**
 
-| 項目 | 說明 | 符號 |
+| Item | Description | Sign |
 | --- | --- | --- |
-| 公司現金 | 籌碼房金庫內現金 | + |
-| NN籌碼持有 | 從莊家購買/交換的NN籌碼庫存 | + |
-| CC籌碼持有 | 從客戶回收的CC籌碼庫存 | + |
-| 客戶預存金總額 | 客戶們存放的現金合計（負債） | +（資產追蹤用） |
-| 遊戲中金額 | 目前在桌上進行中的籌碼總額 | + |
-| 佣金/積分未支付餘額 | 尚未支付的佣金及積分的現金價值（負債） | –（費用） |
+| Company Cash | Cash in the Cage vault | + |
+| NN Chips Held | Inventory of NN chips purchased/exchanged from the House | + |
+| CC Chips Held | Inventory of CC chips collected back from customers | + |
+| Total Customer Deposit Balances | Total cash on deposit by customers (liability) | + (for asset-tracking purposes) |
+| In-Play Amount | Total chip amount currently in play at the table | + |
+| Unpaid Commission/Points Balance | Cash value of commission and points not yet paid (liability) | – (expense) |
 
-**分店營運總資本 = 公司現金 + NN籌碼 + CC籌碼 + 客戶預存金 + 遊戲中金額**
+**Branch total operating capital = Company Cash + NN Chips + CC Chips + Customer Deposit Balances + In-Play Amount**
 
-### 5.2 資產變動情景映射
+### 5.2 Asset Change Scenario Mapping
 
-主要交易別資產項目變動：
+Asset item changes by major transaction type:
 
-**情景1：從莊家購買NN籌碼** — 公司現金 –X, NN籌碼持有 +X, 莊家滾碼 +X。總資本變動：0
+**Scenario 1: Purchasing NN chips from the House** — Company Cash –X, NN Chips Held +X, House Rolling +X. Total capital change: 0
 
-**情景2：客戶現金買入** — 公司現金 +X, NN籌碼持有 –X, 遊戲中金額 +X。總資本變動：+X
+**Scenario 2: Customer cash buy-in** — Company Cash +X, NN Chips Held –X, In-Play Amount +X. Total capital change: +X
 
-**情景3：客戶預存金買入** — 客戶預存金 –X, 公司現金 +X, NN籌碼持有 –X, 遊戲中金額 +X。總資本變動：0
+**Scenario 3: Customer Deposit Balance buy-in** — Deposit Balance –X, Company Cash +X, NN Chips Held –X, In-Play Amount +X. Total capital change: 0
 
-**情景4：遊戲結束 — 籌碼退還** — 遊戲中金額 –(買入額), NN籌碼 +(退還NN), CC籌碼 +(退還CC), 內部滾碼 +(買入額 – 退還NN)。總資本變動：–(客戶WIN) 或 +(莊家WIN)
+**Scenario 4: End of game — chip return** — In-Play Amount –(buy-in amount), NN Chips +(NN returned), CC Chips +(CC returned), Internal Rolling +(buy-in amount – NN returned). Total capital change: –(customer win) or +(House win)
 
-**情景5：客戶兌現** — 客戶預存金/CC籌碼 –X, 公司現金 –X。總資本變動：–X
+**Scenario 5: Customer cash-out** — Deposit Balance/CC Chips –X, Company Cash –X. Total capital change: –X
 
-**情景6：莊家CC籌碼→NN籌碼交換** — CC籌碼 –X, NN籌碼 +X, 莊家滾碼 +X。總資本變動：0
+**Scenario 6: House CC chip → NN chip exchange** — CC Chips –X, NN Chips +X, House Rolling +X. Total capital change: 0
 
-**情景7：遊戲中CC→NN交換** — CC籌碼 +X, NN籌碼 –X, 內部滾碼 +X。總資本變動：0
+**Scenario 7: Mid-game CC → NN exchange** — CC Chips +X, NN Chips –X, Internal Rolling +X. Total capital change: 0
 
-**情景8：佣金支付** — 公司現金 –X, 佣金未支付 –X（負債減少）。總資本變動：–X
+**Scenario 8: Commission payment** — Company Cash –X, Unpaid Commission –X (liability decrease). Total capital change: –X
 
-**情景9：月末莊家結算** — NN籌碼 –(全量退還), 公司現金 +(退還額), +(莊家WIN × 結算率), 莊家滾碼重置
+**Scenario 9: Month-end House settlement** — NN Chips –(full amount returned), Company Cash +(amount returned), +(House Win × Settlement Rate), House Rolling reset
 
-### 5.3 資產完整性驗證
+### 5.3 Asset Integrity Verification
 
-系統在每筆交易處理後自動驗證：
+The system automatically verifies the following after processing each transaction:
 
-1. **資產平衡檢查：** 借方合計 = 貸方合計
-2. **負數檢查：** 所有資產項目 ≥ 0
-3. **莊家滾碼一致性：** 莊家滾碼 – NN籌碼退還累計 = 內部滾碼累計（月末基準）
-4. **客戶預存金一致性：** 個別客戶預存金合計 = 籌碼房客戶預存金總額
+1. **Asset balance check:** Total debits = Total credits
+2. **Negative-value check:** All asset items ≥ 0
+3. **House Rolling consistency:** House Rolling – cumulative NN chip returns = cumulative Internal Rolling (as of month-end)
+4. **Customer Deposit Balance consistency:** Sum of individual customer Deposit Balances = Cage's total Customer Deposit Balance
 
-驗證失敗時：該交易回滾 + 即時通知分店管理員 + 錯誤日誌記錄
+On verification failure: the transaction is rolled back + the Branch Manager is notified in real time + an error is logged
 
-## 6. 滾碼計算邏輯
+## 6. Rolling Calculation Logic
 
-### 6.1 滾碼的兩種類型
+### 6.1 The Two Types of Rolling
 
-**莊家滾碼 (House Rolling)**
+**House Rolling**
 
-- **計算基準：** 適用MIMISA賭場滾碼計算方式
-- **計算時點：** NN籌碼購買時即時計算滾碼，NN籌碼退還時扣減
-- **公式：** 莊家滾碼 = Σ(NN籌碼購買/交換金額) – Σ(NN籌碼退還金額)
-- **用途：** 月末莊家結算基準
+- **Calculation basis:** Applies the MIMISA casino rolling calculation method
+- **Calculation point:** Calculated in real time when NN chips are purchased; deducted when NN chips are returned
+- **Formula:** House Rolling = Σ(NN chip purchase/exchange amounts) – Σ(NN chip return amounts)
+- **Purpose:** Basis for month-end House settlement
 
-**內部滾碼 (Internal Rolling)**
+**Internal Rolling**
 
-- **計算基準：** 按客戶實際遊戲進行
-- **計算時點：** 買入時記錄滾碼，NN籌碼退還部分扣減
-- **公式：** 遊戲別內部滾碼 = 買入金額 – 退還NN籌碼金額
-- **累計公式：** 客戶內部滾碼 = Σ(各遊戲內部滾碼) + Σ(遊戲中CC→NN交換金額)
-- **用途：** 佣金、積分結算基準
+- **Calculation basis:** Based on the customer's actual gameplay
+- **Calculation point:** Recorded at buy-in; deducted for the portion of NN chips returned
+- **Formula:** Internal Rolling per game = Buy-in amount – NN chip return amount
+- **Cumulative formula:** Customer Internal Rolling = Σ(Internal Rolling per game) + Σ(mid-game CC→NN exchange amounts)
+- **Purpose:** Basis for commission and points settlement
 
-### 6.2 滾碼計算逐步流程
+### 6.2 Step-by-Step Rolling Calculation Flow
 
-**Step 1 — 買入時點：** 內部滾碼 += 買入金額，遊戲中金額 += 買入金額
+**Step 1 — At buy-in:** Internal Rolling += buy-in amount, In-Play Amount += buy-in amount
 
-**Step 2 — 遊戲中CC→NN交換：** 內部滾碼 += 交換金額（遊戲中金額不變 — 僅籌碼種類變更）
+**Step 2 — Mid-game CC→NN exchange:** Internal Rolling += exchange amount (In-Play Amount unchanged — only the chip type changes)
 
-**Step 3 — 遊戲結束：** 退還NN籌碼時內部滾碼 -= 退還NN籌碼。最終遊戲滾碼 = 買入額 + CC→NN交換額 – 退還NN籌碼
+**Step 3 — End of game:** When NN chips are returned, Internal Rolling -= NN chips returned. Final game rolling = buy-in amount + CC→NN exchange amount – NN chips returned
 
-### 6.3 驗證範例 `[待確認：MIMISA流程再確認後變更需要]`
+### 6.3 Validation Example `[TBD: subject to change pending reconfirmation of the MIMISA process]`
 
-**客戶A第一場遊戲：** 買入10,000,000 NN籌碼 → 退還4,000,000 NN + 3,000,000 CC。內部滾碼 = 6,000,000。莊家WIN = 3,000,000。
+**Customer A, first game:** Buy-in of 10,000,000 NN chips → returns 4,000,000 NN + 3,000,000 CC. Internal Rolling = 6,000,000. House Win = 3,000,000.
 
-**客戶A第二場遊戲：** 預存金買入7,000,000 NN + 遊戲中CC→NN 10,000,000 → 退還6,000,000 CC(NN退還0)。內部滾碼 = 17,000,000。累計內部滾碼 = 23,000,000。
+**Customer A, second game:** Deposit Balance buy-in of 7,000,000 NN + mid-game CC→NN of 10,000,000 → returns 6,000,000 CC (NN returned = 0). Internal Rolling = 17,000,000. Cumulative Internal Rolling = 23,000,000.
 
-## 7. 遊戲上傳流程
+## 7. Game Upload Process
 
-### 7.1 遊戲編號發行規則 `[待確認：MIMISA桌號格式確認後需變更]`
+### 7.1 Game Number Issuance Rules `[TBD: subject to change pending confirmation of the MIMISA table-number format]`
 
-**格式：** YYYYMMDD-TTT-GG-NNNN
+**Format:** YYYYMMDD-TTT-GG-NNNN
 
-| 區段 | 說明 | 範例 |
+| Segment | Description | Example |
 | --- | --- | --- |
-| YYYYMMDD | 遊戲開始日期 | 20260317 |
-| TTT | 桌號（3位數，0填充） | 005 |
-| GG | 遊戲類型代碼 | BA（百家樂）、BJ（21點）、RO（輪盤） |
-| NNNN | 該桌該日連續編號（4位數） | 0012 |
+| YYYYMMDD | Game start date | 20260317 |
+| TTT | Table number (3 digits, zero-padded) | 005 |
+| GG | Game type code | BA (Baccarat), BJ (Blackjack), RO (Roulette) |
+| NNNN | Sequential number for that table on that day (4 digits) | 0012 |
 
-**範例：** 20260317-005-BA-0012
+**Example:** 20260317-005-BA-0012
 
-**發行時點：** 遊戲開始前由系統自動生成。允許手動輸入但必須驗證重複
+**Issuance point:** Automatically generated by the system before the game starts. Manual entry is allowed but duplicates must be validated
 
-### 7.2 遊戲上傳必填項目
+### 7.2 Required Fields for Game Upload
 
-| 欄位名 | 數據類型 | 必填 | 說明 |
+| Field Name | Data Type | Required | Description |
 | --- | --- | --- | --- |
-| game_number | VARCHAR(20) | 必填 | 自動生成或手動輸入 |
-| roller_account_id | FK | 必填 | 交換員（滾碼員）帳戶 |
-| player_account_id | FK | 必填 | 玩家帳戶（Player或Agent） |
-| inspector_1_id | FK | 必填 | 檢查員1（樓面經理/主管） |
-| inspector_2_id | FK | 必填 | 檢查員2（籌碼房職員） |
-| chip_quantity | DECIMAL(18,2) | 必填 | 交換的NN籌碼數量（披索單位） |
-| game_type | ENUM | 必填 | 遊戲類型（A/B/C等） |
-| table_number | VARCHAR(10) | 必填 | 桌號 |
-| upload_timestamp | DATETIME | 自動 | 上傳時間 |
-| uploaded_by | FK | 自動 | 上傳負責人帳戶 |
+| game_number | VARCHAR(20) | Required | Auto-generated or manually entered |
+| roller_account_id | FK | Required | Exchange staff (Roller) account |
+| player_account_id | FK | Required | Player account (Player or Agent) |
+| inspector_1_id | FK | Required | Inspector 1 (Floor Manager/Supervisor) |
+| inspector_2_id | FK | Required | Inspector 2 (Cage Staff) |
+| chip_quantity | DECIMAL(18,2) | Required | Quantity of NN chips exchanged (peso units) |
+| game_type | ENUM | Required | Game type (A/B/C, etc.) |
+| table_number | VARCHAR(10) | Required | Table number |
+| upload_timestamp | DATETIME | Automatic | Upload timestamp |
+| uploaded_by | FK | Automatic | Account responsible for the upload |
 
-### 7.3 上傳工作流
+### 7.3 Upload Workflow
 
 ```
-1. 樓面職員/滾碼員在自助終端或PC輸入數據
+1. Floor Staff/Roller enters data at a self-service terminal or PC
    ↓
-2. 第1次驗證：必填項目遺漏檢查 → 遺漏時即時警告，阻止提交
+2. Validation 1: Check for missing required fields → immediate warning if missing, submission blocked
    ↓
-3. 第2次驗證：遊戲編號重複檢查 → 重複時警告，阻止上傳
+3. Validation 2: Check for duplicate game number → warning if duplicate, upload blocked
    ↓
-4. 第3次驗證：玩家帳戶狀態確認（是否啟用）、滾碼員有效性確認
+4. Validation 3: Confirm player account status (active), confirm Roller validity
    ↓
-5. 上傳請求提交 → 狀態：「待審批」
+5. Upload request submitted → Status: "Pending Approval"
    ↓
-6. 籌碼房職員（有權限）或分店管理員審查
+6. Reviewed by authorized Cage Staff or Branch Manager
    ↓
-7-A. 審批 → 狀態：「審批完成」
-     → 自動計算及累積滾碼額、佣金、積分
-     → 自動更新籌碼房資產項目
-     → 創建交易記錄
-     → 向審批者發送「成功」通知 + 上傳內容摘要
+7-A. Approved → Status: "Approval Complete"
+     → Rolling amount, commission, and points automatically calculated and accrued
+     → Cage asset items automatically updated
+     → Transaction record created
+     → "Success" notification sent to approver + upload content summary
 
-7-B. 駁回 → 狀態：「駁回」
-     → 必須輸入駁回原因
-     → 向請求者發送「駁回」通知 + 原因
+7-B. Rejected → Status: "Rejected"
+     → Rejection reason must be entered
+     → "Rejected" notification sent to requester + reason
 ```
 
-**重要規則：**
+**Important rules:**
 
-- 分店管理員未審批的數據不反映到系統中
-- 遊戲結果（勝/負、餘額變化）不另行手動輸入 — 以上傳數據和交易為基準結算
+- Data not approved by the Branch Manager is not reflected in the system
+- Game results (win/loss, balance change) are not entered manually as a separate step — settlement is based on uploaded data and transactions
 
-### 7.4 遊戲結束上傳
+### 7.4 End-of-Game Upload
 
-遊戲結束時以另行表單記錄結果：
+At the end of a game, results are recorded on a separate form:
 
-| 欄位名 | 數據類型 | 必填 | 說明 |
+| Field Name | Data Type | Required | Description |
 | --- | --- | --- | --- |
-| game_number | FK | 必填 | 對應遊戲編號 |
-| returned_nn_chips | DECIMAL(18,2) | 必填 | 退還NN籌碼金額 |
-| returned_cc_chips | DECIMAL(18,2) | 必填 | 退還CC籌碼金額 |
-| mid_game_exchanges | JSON | 選填 | 遊戲中CC→NN交換明細 |
-| result_type | ENUM | 自動計算 | WIN / LOSE / DRAW |
-| win_lose_amount | DECIMAL(18,2) | 自動計算 | 莊家基準WIN/LOSE金額 |
-| rolling_amount | DECIMAL(18,2) | 自動計算 | 該遊戲內部滾碼 |
+| game_number | FK | Required | Corresponding game number |
+| returned_nn_chips | DECIMAL(18,2) | Required | Amount of NN chips returned |
+| returned_cc_chips | DECIMAL(18,2) | Required | Amount of CC chips returned |
+| mid_game_exchanges | JSON | Optional | Details of mid-game CC→NN exchanges |
+| result_type | ENUM | Auto-calculated | WIN / LOSE / DRAW |
+| win_lose_amount | DECIMAL(18,2) | Auto-calculated | House-basis WIN/LOSE amount |
+| rolling_amount | DECIMAL(18,2) | Auto-calculated | Internal Rolling for that game |
 
-### 7.5 Buy-in / Cash-out上傳表單
+### 7.5 Buy-in / Cash-out Upload Form
 
-| 欄位名 | 數據類型 | 必填 | 說明 |
+| Field Name | Data Type | Required | Description |
 | --- | --- | --- | --- |
-| account_id | FK | 必填 | 客戶帳戶 |
-| customer_name | VARCHAR | 自動填入 | 從帳戶自動載入 |
-| transaction_type | ENUM | 必填 | BUY_IN, CASH_OUT, DEPOSIT, WITHDRAWAL, ACCOUNT_TRANSFER |
-| amount | DECIMAL(18,2) | 必填 | 交易金額 |
-| payment_method | ENUM | 必填 | CASH, DEPOSIT_BALANCE（使用預存金） |
-| signature | BLOB | 必填 | 電子簽名（觸控輸入） |
-| transaction_date | DATETIME | 自動 | 交易日時 |
-| processed_by | FK | 自動 | 處理負責籌碼房職員 |
+| account_id | FK | Required | Customer account |
+| customer_name | VARCHAR | Auto-filled | Automatically loaded from account |
+| transaction_type | ENUM | Required | BUY_IN, CASH_OUT, DEPOSIT, WITHDRAWAL, ACCOUNT_TRANSFER |
+| amount | DECIMAL(18,2) | Required | Transaction amount |
+| payment_method | ENUM | Required | CASH, DEPOSIT_BALANCE (using Deposit Balance) |
+| signature | BLOB | Required | Electronic signature (touch input) |
+| transaction_date | DATETIME | Automatic | Transaction date/time |
+| processed_by | FK | Automatic | Cage Staff member responsible for processing |
 
-## 8. 佣金結算邏輯
+## 8. Commission Settlement Logic
 
-### 8.1 佣金類型及設定
+### 8.1 Commission Types and Settings
 
-| 佣金類型 | 計算基準 | 適用範例 |
+| Commission Type | Calculation Basis | Example Application |
 | --- | --- | --- |
-| 滾碼佣金 | 內部滾碼金額 × 佣金率 | A遊戲：滾碼 × 1.4% |
-| 勝負佣金 | 莊家WIN/LOSE × 佣金率 | B遊戲：WIN/LOSE × 40% |
-| 混合佣金 | 滾碼 + 勝負同時適用 | C遊戲：依遊戲設定 |
+| Rolling commission | Internal Rolling amount × commission rate | Game A: Rolling × 1.4% |
+| Win/loss commission | House WIN/LOSE × commission rate | Game B: WIN/LOSE × 40% |
+| Hybrid commission | Rolling + win/loss applied simultaneously | Game C: per game configuration |
 
-### 8.2 佣金設定表
+### 8.2 Commission Configuration Table
 
-分店管理員可按以下組合個別設定：
+The Branch Manager can individually configure by the following combination of fields:
 
 ```
 commission_config {
   config_id (PK)
   branch_id (FK)
   game_type (ENUM)
-  account_id (FK) — 代理或副公司
+  account_id (FK) — Agent or Sub-Company
   commission_type (ENUM: ROLLING / WINLOSE / HYBRID)
-  rolling_rate (DECIMAL 5,4) — 例：0.0140 = 1.4%
-  winlose_rate (DECIMAL 5,4) — 例：0.4000 = 40%
+  rolling_rate (DECIMAL 5,4) — e.g., 0.0140 = 1.4%
+  winlose_rate (DECIMAL 5,4) — e.g., 0.4000 = 40%
   effective_from (DATE)
   effective_to (DATE, nullable)
   created_by (FK)
@@ -457,225 +458,225 @@ commission_config {
 }
 ```
 
-### 8.3 佣金計算流程
+### 8.3 Commission Calculation Flow
 
-**滾碼佣金計算（遊戲上傳審批時即時）：**
-
-```
-佣金金額 = 該遊戲內部滾碼 × rolling_rate
-代理佣金錢包 += 佣金金額
-```
-
-**勝負佣金計算：**
+**Rolling commission calculation (in real time at game upload approval):**
 
 ```
-莊家WIN時：
-  佣金金額 = WIN金額 × winlose_rate
-  代理佣金錢包 += 佣金金額
-
-莊家LOSE時：
-  佣金金額 = LOSE金額 × winlose_rate × (–1)
-  代理佣金錢包 -= 佣金金額
-  （佣金錢包可能為負 — 在下次WIN中抵消）
+Commission amount = Internal Rolling for that game × rolling_rate
+Agent Commission Wallet += Commission amount
 ```
 
-### 8.4 副公司佣金
+**Win/loss commission calculation:**
 
 ```
-副公司佣金 = 所屬代理總WIN/LOSE × 副公司勝負率（例：5%）
+When the House WINS:
+  Commission amount = WIN amount × winlose_rate
+  Agent Commission Wallet += Commission amount
+
+When the House LOSES:
+  Commission amount = LOSE amount × winlose_rate × (–1)
+  Agent Commission Wallet -= Commission amount
+  (Commission Wallet may go negative — offset against a future WIN)
 ```
 
-### 8.5 手續費提款流程
+### 8.4 Sub-Company Commission
 
 ```
-1. 代理/副公司提交提款申請（申請金額 ≤ 佣金錢包餘額）
+Sub-Company Commission = Total WIN/LOSE of subordinate Agents × Sub-Company win/loss rate (e.g., 5%)
+```
+
+### 8.5 Commission Withdrawal Process
+
+```
+1. Agent/Sub-Company submits a withdrawal request (requested amount ≤ Commission Wallet balance)
    ↓
-2. 系統自動生成電子結算收據(Invoice)
+2. System automatically generates an electronic settlement receipt (Invoice)
    ↓
-3. 向分店管理員發送審批請求通知
+3. Approval-request notification sent to Branch Manager
    ↓
-4-A. 審批 → 佣金錢包扣減、Invoice確定、現金支付記錄
-4-B. 駁回 → 填寫駁回原因、通知申請者
+4-A. Approved → Commission Wallet deducted, Invoice finalized, cash payment recorded
+4-B. Rejected → rejection reason entered, requester notified
 ```
 
-**Invoice必含項目：** 收款人帳戶資訊、結算期間、各遊戲滾碼/勝負詳細明細、佣金率及計算依據、總佣金金額、提款申請金額、審批者簽名及審批日時
+**Invoice must include:** Recipient account information, settlement period, detailed breakdown of rolling/win-loss per game, commission rate and calculation basis, total commission amount, requested withdrawal amount, approver signature and approval date/time
 
-## 9. MIMISA積分系統
+## 9. MIMISA Points System
 
-### 9.1 積分累積規則
+### 9.1 Points Accrual Rules
 
-| 項目 | 規則 |
+| Item | Rule |
 | --- | --- |
-| 累積對象 | 僅一般帳戶(Player)累積 |
-| 累積基準 | 內部滾碼金額的0.1%（佣金率變動時以獨立比率管理） |
-| 累積時點 | 遊戲上傳審批完成時即時 |
-| 小數處理 | 記錄至小數點，不四捨五入 |
-| 可見性 | 僅在代理/分店管理員設為「顯示」時向客戶顯示。預設 = 隱藏 |
+| Accrual eligibility | Only General Accounts (Player) accrue points |
+| Accrual basis | 0.1% of Internal Rolling amount (managed as an independent rate if the commission rate changes) |
+| Accrual point | Immediately upon game upload approval |
+| Decimal handling | Recorded to the decimal point, no rounding |
+| Visibility | Shown to the customer only when set to "Show" by the Agent/Branch Manager. Default = Hidden |
 
-**累積範例：** 內部滾碼 6,000,000 × 0.001 = 6,000積分累積
+**Accrual example:** Internal Rolling 6,000,000 × 0.001 = 6,000 points accrued
 
-### 9.2 積分有效期及失效
+### 9.2 Points Validity Period and Expiration
 
-| 項目 | 規則 |
+| Item | Rule |
 | --- | --- |
-| 有效期 | 累積日起2個月 |
-| 失效通知 | 失效前7天，向「顯示」設定帳戶的客戶及負責代理通知 |
-| 失效處理 | 有效期滿翌日00:00自動失效處理（批次作業） |
+| Validity period | 2 months from date of accrual |
+| Expiration notice | Sent 7 days before expiration, to customers set to "Show" and their responsible Agent |
+| Expiration processing | Automatically processed at 00:00 the day after the validity period ends (batch job) |
 
-### 9.3 積分使用規則
+### 9.3 Points Usage Rules
 
-- 可使用對象：僅限促銷（兌換券、住宿、餐飲等）
-- 不可直接轉換為Real Money/CC/NN錢包
-- 扣減原則：FIFO（從累積日最早的積分開始扣減）
-- 所有積分使用明細記錄於交易清單
+- Eligible uses: promotions only (vouchers, accommodation, dining, etc.)
+- Cannot be directly converted to Real Money/CC/NN wallet
+- Deduction principle: FIFO (earliest-accrued points deducted first)
+- All points usage details are recorded in the transaction list
 
-### 9.4 積分代理控制
+### 9.4 Agent Control Over Points
 
-代理可控制所屬客戶的積分：累積率調整（0%~基本率0.1%範圍內）、可見性控制（「顯示」/「隱藏」）、「隱藏」設定時客戶不知積分存在（選單不顯示）、積分使用審批（代理審批後可使用，選擇設定）
+Agents can control points for their subordinate customers: accrual rate adjustment (0%–base rate of 0.1%), visibility control ("Show"/"Hide" — when set to "Hide," the customer does not know points exist, as the menu is not shown), and points usage approval (usable after Agent approval, an optional setting)
 
-## 10. 資金轉帳 (Fund Transfer)
+## 10. Fund Transfer
 
-### 10.1 資金轉帳類型定義
+### 10.1 Fund Transfer Type Definitions
 
-| 轉帳類型 | 發送方 | 接收方 | 需審批 | 說明 |
+| Transfer Type | Sender | Recipient | Approval Required | Description |
 | --- | --- | --- | --- | --- |
-| 客戶→客戶 | Player | Player | 分店管理員 | 同分店內客戶間預存金轉帳 |
-| 代理→客戶 | Agent | Player(下級) | 分店管理員 | 代理向所屬客戶資金支援 |
-| 客戶→代理 | Player | Agent(上級) | 分店管理員 | 客戶向代理資金退還 |
-| 代理→代理 | Agent | Agent | 分店管理員 | 同分店內代理間轉帳 |
-| 副公司→代理 | Sub-Company | Agent(下級) | 分店管理員 | 副公司向所屬代理資金分配 |
+| Customer → Customer | Player | Player | Branch Manager | Deposit Balance transfer between customers within the same branch |
+| Agent → Customer | Agent | Player (subordinate) | Branch Manager | Agent providing financial support to its customer |
+| Customer → Agent | Player | Agent (superior) | Branch Manager | Customer returning funds to Agent |
+| Agent → Agent | Agent | Agent | Branch Manager | Transfer between Agents within the same branch |
+| Sub-Company → Agent | Sub-Company | Agent (subordinate) | Branch Manager | Sub-Company distributing funds to its Agent |
 
-### 10.2 轉帳限制規則
+### 10.2 Transfer Restriction Rules
 
-| 規則 | 內容 |
+| Rule | Content |
 | --- | --- |
-| 轉帳對象 | 僅同分店內帳戶可轉。跨分店轉帳不可 |
-| 轉帳限額 | 分店管理員設定各帳戶單次限額及每日限額 |
-| 最低金額 | 1,000披索（可設定） |
-| 餘額檢查 | 發送方Real Money錢包餘額 ≥ 轉帳金額。不足時拒絕 |
-| 轉帳對象關係 | 基本：僅允許直屬上下級關係。分店管理員可例外審批非關係轉帳 |
-| 轉帳手續費 | 基本免費。分店管理員可設定手續費率（未來擴展） |
-| 轉帳認證 | 必須輸入轉帳密碼 |
+| Transfer recipients | Accounts within the same branch only. Cross-branch transfers not allowed |
+| Transfer limits | Branch Manager sets per-transaction and daily limits for each account |
+| Minimum amount | 1,000 pesos (configurable) |
+| Balance check | Sender's Real Money Wallet balance ≥ transfer amount. Rejected if insufficient |
+| Transfer relationship | Basic rule: only direct superior/subordinate relationships allowed. Branch Manager may grant exception approval for non-hierarchy transfers |
+| Transfer fee | Free by default. Branch Manager may set a fee rate (future extension) |
+| Transfer authentication | Transfer password required |
 
-### 10.3 轉帳申請流程
+### 10.3 Transfer Request Process
 
 ```
-Step 1：發送方在客戶入口進入[資金轉帳]
+Step 1: Sender goes to [Fund Transfer] in the Client Portal
   ↓
-Step 2：選擇接收方（直屬上下級帳戶清單下拉或帳戶ID/姓名搜尋）
+Step 2: Selects recipient (dropdown list of direct superior/subordinate accounts, or search by account ID/name)
   ↓
-Step 3：輸入轉帳金額（顯示當前餘額、單次限額及每日剩餘限額）
+Step 3: Enters transfer amount (current balance, per-transaction limit, and remaining daily limit displayed)
   ↓
-Step 4：輸入轉帳密碼
+Step 4: Enters transfer password
   ↓
-Step 5：確認畫面（接收方姓名/帳戶ID、轉帳金額、轉帳後預計餘額）
+Step 5: Confirmation screen (recipient name/account ID, transfer amount, projected balance after transfer)
   ↓
-Step 6：提交轉帳申請 → 狀態：「待審批」
-  → 從發送方餘額即時凍結轉帳金額(hold_amount)
+Step 6: Submits transfer request → Status: "Pending Approval"
+  → Transfer amount immediately held (hold_amount) against sender's balance
   ↓
-Step 7：向分店管理員發送審批請求通知
+Step 7: Approval-request notification sent to Branch Manager
   ↓
-Step 8-A：審批
-  → 解除凍結 → 確定扣減發送方餘額
-  → 接收方Real Money錢包 += 轉帳金額
-  → 向雙方發送完成通知 + 生成電子收據
-  → 創建2筆交易記錄（發送1筆 + 接收1筆）
+Step 8-A: Approved
+  → Hold released → sender's balance deduction confirmed
+  → Recipient's Real Money Wallet += transfer amount
+  → Completion notification sent to both parties + electronic receipt generated
+  → 2 transaction records created (1 sent + 1 received)
 
-Step 8-B：駁回
-  → 解除凍結 → 恢復發送方餘額
-  → 向發送方發送駁回通知（含原因）
+Step 8-B: Rejected
+  → Hold released → sender's balance restored
+  → Rejection notification sent to sender (with reason)
 ```
 
-## 11. 客戶自助服務功能
+## 11. Customer Self-Service Features
 
-### 11.1 客戶首頁
+### 11.1 Customer Home Screen
 
-行動環境基準設計。上方Real Money餘額/NN籌碼/CC籌碼，[存款申請][取款申請]按鈕。中間[資金轉帳][遊戲紀錄][交易明細][我的資訊]選單。下方最近10筆交易摘要。積分/佣金僅在「顯示」設定時顯示（從DOM移除）。
+Designed mobile-first. Real Money balance/NN chips/CC chips at the top, [Deposit Request][Withdrawal Request] buttons. [Fund Transfer][Game Records][Transaction Details][My Info] menu in the middle. Summary of the most recent 10 transactions at the bottom. Points/Commission shown only when set to "Show" (removed from the DOM otherwise).
 
-### 11.2 存款申請（客戶 → 籌碼房）
+### 11.2 Deposit Request (Customer → Cage)
 
-客戶[存款申請] → 輸入金額 → 提交申請（「存款待處理」）→ 籌碼房職員通知 → 客戶到訪/現金交付 → 籌碼房職員輸入收取金額（不符時警告+填寫原因）→ 分店管理員審批 → Real Money反映 + 電子收據
+Customer taps [Deposit Request] → enters amount → submits request ("Deposit Pending") → Cage Staff notified → customer visits/delivers cash → Cage Staff enters amount received (warning + reason required if it doesn't match) → Branch Manager approves → Real Money reflected + electronic receipt
 
-### 11.3 取款申請（客戶 → 籌碼房）
+### 11.3 Withdrawal Request (Customer → Cage)
 
-客戶[取款申請] → 輸入金額（餘額以內）→ 提交申請（餘額凍結）→ 籌碼房職員準備現金 → 客戶到訪/領取/簽名 → 處理完成（解凍、餘額扣減）+ 收據。24小時未領取時自動取消（解凍、餘額恢復）。
+Customer taps [Withdrawal Request] → enters amount (within balance) → submits request (balance held) → Cage Staff prepares cash → customer visits/collects/signs → processing complete (hold released, balance deducted) + receipt. If not collected within 24 hours, automatically cancelled (hold released, balance restored).
 
-### 11.4 買入申請（選擇性）
+### 11.4 Buy-in Request (Optional)
 
-客戶在遊戲開始前預先申請從預存金買入NN籌碼。現有籌碼房窗口直接買入仍可繼續。
+Customer pre-requests a purchase of NN chips from Deposit Balance before the game starts. Direct buy-in at the existing Cage window remains available.
 
-### 11.5 電子收據查詢
+### 11.5 Electronic Receipt Inquiry
 
-所有完成的交易可在畫面查詢。收據編號、交易日時、類型、金額、交易前/後餘額、處理負責人、審批者、電子簽名顯示。不可列印/下載（安全）。
+All completed transactions can be viewed on screen: receipt number, transaction date/time, type, amount, balance before/after, processing staff, approver, and electronic signature are displayed. Cannot be printed/downloaded (for security).
 
-## 12. 月末莊家結算 `[待確認：MIMISA結算程序、期間等需確認]`
+## 12. Month-End House Settlement `[TBD: MIMISA settlement procedure, period, etc. need confirmation]`
 
-確定結算期間（月1日~末日）→ NN籌碼全量退還 → 莊家滾碼驗證（莊家最終滾碼 == 內部滾碼累計）→ WIN/LOSE結算 → 淨利潤計算 → 新月準備（NN籌碼再購買、滾碼計數器重置）
+Determine settlement period (1st to last day of the month) → full return of NN chips → verify House Rolling (final House Rolling == cumulative Internal Rolling) → WIN/LOSE settlement → net profit calculation → prepare for new month (repurchase NN chips, reset rolling counters)
 
-結算報表自動生成：總莊家/內部滾碼、WIN/LOSE（客戶別）、佣金總額（代理/副公司別）、積分、淨利潤、籌碼房資產變動摘要
+Settlement report automatically generated: total House/Internal Rolling, WIN/LOSE (by customer), total commission (by Agent/Sub-Company), points, net profit, summary of Cage asset changes
 
-## 13. 通知系統
+## 13. Notification System
 
-### 13.1 營運入口通知
+### 13.1 Operations Portal Notifications
 
-| 事件 | 接收對象 |
+| Event | Recipient |
 | --- | --- |
-| 上傳審批請求 | 分店管理員/有權限籌碼房職員 |
-| 上傳審批/駁回 | 上傳請求者 |
-| 手續費提款請求 | 分店管理員 |
-| 手續費提款審批/駁回 | 提款請求者 |
-| 積分失效前7天 | 客戶（「顯示」設定時）+ 負責代理 |
-| 帳戶鎖定/資產完整性失敗 | 分店管理員 + 主管 |
-| 手動錢包調整 | 主管 |
+| Upload approval request | Branch Manager / authorized Cage Staff |
+| Upload approved/rejected | Upload requester |
+| Commission withdrawal request | Branch Manager |
+| Commission withdrawal approved/rejected | Withdrawal requester |
+| Points expiring in 7 days | Customer (if set to "Show") + responsible Agent |
+| Account lockout / asset integrity failure | Branch Manager + Master |
+| Manual wallet adjustment | Master |
 
-### 13.2 客戶入口通知
+### 13.2 Client Portal Notifications
 
-| 事件 | 接收對象 |
+| Event | Recipient |
 | --- | --- |
-| 存款/取款完成 | 客戶本人（+ SMS選擇） |
-| 取款申請自動取消(24h) | 客戶本人 |
-| 轉帳接收/發送/駁回 | 相關客戶 |
-| 買入/兌現/遊戲結果 | 客戶本人 |
-| 佣金累積（可見性「顯示」） | 客戶本人 |
+| Deposit/withdrawal completed | Customer (+ optional SMS) |
+| Withdrawal request auto-cancelled (24h) | Customer |
+| Transfer received/sent/rejected | Relevant customer |
+| Buy-in/cash-out/game result | Customer |
+| Commission accrued (if visibility "Show") | Customer |
 
-### 13.3 SMS整合（選擇）
+### 13.3 SMS Integration (Optional)
 
-菲律賓電信商（Globe、Smart）閘道整合、金融事件發送、opt-in設定、日誌記錄。
+Integration with Philippine telecom carrier gateways (Globe, Smart), sending of financial event notifications, opt-in settings, logging.
 
-## 14. 日誌管理
+## 14. Log Management
 
-| 日誌類型 | 記錄項目 | 保存 |
+| Log Type | Recorded Items | Retention |
 | --- | --- | --- |
-| 存取日誌 | 帳戶ID、登入/登出、IP、設備 | 3年 |
-| 活動日誌 | 帳戶ID、執行操作、目標記錄、時間 | 3年 |
-| 上傳/審批日誌 | 上傳者/審批者、內容、結果 | 5年 |
-| 結算日誌 | 佣金/積分計算依據 | 5年 |
-| 手動調整日誌 | 調整者、目標、前/後值、原因 | 永久 |
-| 資產變動日誌 | 交易ID、資產項目別變動 | 5年 |
+| Access log | Account ID, login/logout, IP, device | 3 years |
+| Activity log | Account ID, action performed, target record, timestamp | 3 years |
+| Upload/approval log | Uploader/approver, content, result | 5 years |
+| Settlement log | Basis for commission/points calculation | 5 years |
+| Manual adjustment log | Adjuster, target, before/after values, reason | Permanent |
+| Asset change log | Transaction ID, change by asset item | 5 years |
 
-日誌查閱權限：主管（全部）、分店管理員（該分店）、副公司（所屬遊戲紀錄）、代理（所屬客戶紀錄）、其他（僅本人）
+Log access rights: Master (all), Branch Manager (that branch), Sub-Company (its own Agents' game records), Agent (its own customers' records), others (own records only)
 
-## 15. 儀表板及報表
+## 15. Dashboards and Reports
 
-### 15.1 主管儀表板
+### 15.1 Master Dashboard
 
-全分店籌碼房總資產、分店別滾碼統計、WIN/LOSE趨勢圖表、待審批件數、代理業績排名、客戶數
+Total Cage assets across all branches, rolling statistics by branch, WIN/LOSE trend charts, pending-approval count, Agent performance ranking, customer count
 
-### 15.2 分店管理員儀表板
+### 15.2 Branch Manager Dashboard
 
-籌碼房資產現況板（即時、WebSocket/5秒輪詢）、莊家/內部滾碼比較、待審批件數、代理/副公司業績摘要、當日遊戲現況、審批日誌時間軸
+Real-time Cage asset status board (WebSocket / 5-second polling), House vs. Internal Rolling comparison, pending-approval count, Agent/Sub-Company performance summary, current-day game status, approval log timeline
 
-### 15.3 代理儀表板
+### 15.3 Agent Dashboard
 
-本月收益卡（佣金累計/可提款）、所屬客戶清單及滾碼、客戶別快速操作（[轉帳][遊戲紀錄][滾碼]）、本人遊戲明細
+This month's earnings card (accrued commission / withdrawable), list of subordinate customers and their rolling, per-customer quick actions ([Transfer][Game Records][Rolling]), personal game details
 
-### 15.4 報表篩選
+### 15.4 Report Filters
 
-期間（日/週/月/自訂）、帳戶（代理別/客戶別）、遊戲類型（A/B/C）、交易類型、審批狀態。**不可下載**（安全考量僅限畫面查詢）。
+Period (day/week/month/custom), account (by Agent/by customer), game type (A/B/C), transaction type, approval status. **Cannot be downloaded** (on-screen inquiry only, for security reasons).
 
-## 16. 資料庫綱要
+## 16. Database Schema
 
-### 16.1 資料表清單
+### 16.1 Table List
 
 **T01. branches:** branch_id(PK), branch_name, branch_code(UNIQUE), status, timestamps
 
@@ -717,99 +718,99 @@ Step 8-B：駁回
 
 **T20. transfer_limits:** limit_id(PK), branch_id(FK), account_id(FK, nullable), per_transaction_limit, daily_limit, allow_non_hierarchy(BOOLEAN), created_by(FK)
 
-### 16.2 資料表關係摘要
+### 16.2 Table Relationship Summary
 
-branches 1─N accounts, cage_assets, games, transactions, house_rolling_ledger, house_settlements。accounts 1─N accounts(parent_id), wallets, transactions, games, commissions, points。accounts 1─1 point_visibility。games 1─N transactions, rolling_records, commissions, points。transactions 1─N approval_logs。
+branches 1─N accounts, cage_assets, games, transactions, house_rolling_ledger, house_settlements. accounts 1─N accounts(parent_id), wallets, transactions, games, commissions, points. accounts 1─1 point_visibility. games 1─N transactions, rolling_records, commissions, points. transactions 1─N approval_logs.
 
-## 17. API端點
+## 17. API Endpoints
 
-### 17.1 營運入口API
+### 17.1 Operations Portal API
 
-**認證：** POST /api/auth/login, /logout, /refresh, /password-reset
+**Authentication:** POST /api/auth/login, /logout, /refresh, /password-reset
 
-**帳戶：** POST/GET/PUT /api/accounts, PATCH /:id/status, POST /:id/approve
+**Accounts:** POST/GET/PUT /api/accounts, PATCH /:id/status, POST /:id/approve
 
-**遊戲：** POST/GET /api/games, PUT /:id/complete, POST /:id/exchange, /:id/approve, /:id/reject
+**Games:** POST/GET /api/games, PUT /:id/complete, POST /:id/exchange, /:id/approve, /:id/reject
 
-**交易：** POST/GET /api/transactions, POST /:id/approve, /:id/reject
+**Transactions:** POST/GET /api/transactions, POST /:id/approve, /:id/reject
 
-**佣金：** GET /api/commissions, POST /withdraw-request, /withdraw/:id/approve, /reject, GET /invoice/:id
+**Commission:** GET /api/commissions, POST /withdraw-request, /withdraw/:id/approve, /reject, GET /invoice/:id
 
-**佣金設定：** GET/POST/PUT /api/commission-configs
+**Commission config:** GET/POST/PUT /api/commission-configs
 
-**積分：** GET /api/points, POST /use, PUT /point-visibility/:player_id
+**Points:** GET /api/points, POST /use, PUT /point-visibility/:player_id
 
-**籌碼房資產：** GET /api/cage-assets, POST /manual-adjust
+**Cage assets:** GET /api/cage-assets, POST /manual-adjust
 
-**莊家：** GET /api/house-rolling, POST /nn-purchase, /nn-return, /cc-exchange, POST/GET /api/house-settlements
+**House:** GET /api/house-rolling, POST /nn-purchase, /nn-return, /cc-exchange, POST/GET /api/house-settlements
 
-**報表：** GET /api/reports/rolling, /commission, /points, /cage-summary, /agent-performance
+**Reports:** GET /api/reports/rolling, /commission, /points, /cage-summary, /agent-performance
 
-**通知：** GET/PATCH /api/notifications
+**Notifications:** GET/PATCH /api/notifications
 
-**日誌：** GET /api/logs/activity, /approval, /manual-adjustments
+**Logs:** GET /api/logs/activity, /approval, /manual-adjustments
 
-### 17.2 客戶入口API
+### 17.2 Client Portal API
 
-**自助服務：** GET /api/me, /me/wallets, /me/transactions, /me/games, /me/points, /me/commissions, /me/receipts/:id, PUT /me/password
+**Self-service:** GET /api/me, /me/wallets, /me/transactions, /me/games, /me/points, /me/commissions, /me/receipts/:id, PUT /me/password
 
-**客戶發起：** POST /api/me/deposit-request, /withdrawal-request, /buyin-request, DELETE /me/withdrawal-request/:id
+**Customer-initiated:** POST /api/me/deposit-request, /withdrawal-request, /buyin-request, DELETE /me/withdrawal-request/:id
 
-**轉帳：** POST/GET /api/transfers, POST /:id/approve, /reject, GET/PUT /api/transfer-limits
+**Transfers:** POST/GET /api/transfers, POST /:id/approve, /reject, GET/PUT /api/transfer-limits
 
-**代理：** GET /api/agents/me/customers, /:id/wallets, /:id/games, /:id/rolling, PUT /:id/point-visibility, GET /me/commissions, POST /me/commission-withdraw
+**Agent:** GET /api/agents/me/customers, /:id/wallets, /:id/games, /:id/rolling, PUT /:id/point-visibility, GET /me/commissions, POST /me/commission-withdraw
 
-**副公司：** GET /api/sub-companies/me/agents, /:id/performance, POST /me/fund-distribute, GET /me/commissions, POST /me/commission-withdraw
+**Sub-Company:** GET /api/sub-companies/me/agents, /:id/performance, POST /me/fund-distribute, GET /me/commissions, POST /me/commission-withdraw
 
-## 18. UI/UX畫面構成
+## 18. UI/UX Screen Composition
 
-### 18.1 營運入口畫面 (S01~S23)
+### 18.1 Operations Portal Screens (S01~S23)
 
-S01登入、S02主管儀表板、S03分店管理員儀表板、S04籌碼房資產現況板、S05~S07副公司/代理/客戶儀表板、S08遊戲上傳表單、S09遊戲結束表單、S10 Buy-in/Cash-out表單、S11審批管理、S12交易查詢、S13~S15滾碼/佣金/積分報表、S16帳戶管理、S17佣金設定、S18積分設定、S19手續費提款、S20莊家滾碼帳簿、S21月末結算、S22通知中心、S23日誌查詢
+S01 Login, S02 Master Dashboard, S03 Branch Manager Dashboard, S04 Cage Asset Status Board, S05~S07 Sub-Company/Agent/Customer Dashboards, S08 Game Upload Form, S09 End-of-Game Form, S10 Buy-in/Cash-out Form, S11 Approval Management, S12 Transaction Inquiry, S13~S15 Rolling/Commission/Points Reports, S16 Account Management, S17 Commission Settings, S18 Points Settings, S19 Commission Withdrawal, S20 House Rolling Ledger, S21 Month-End Settlement, S22 Notification Center, S23 Log Inquiry
 
-### 18.2 客戶入口畫面 (CS01~CS19)
+### 18.2 Client Portal Screens (CS01~CS19)
 
-CS01客戶交易明細、CS02遊戲紀錄、CS03積分詳情、CS04佣金詳情、CS05資金轉帳、CS06存款申請、CS07取款申請、CS08買入申請、CS09電子收據、CS10代理首頁、CS11客戶管理、CS12代理佣金、CS13代理提款、CS14副公司首頁、CS15代理業績、CS16資金分配、CS17副公司提款、CS18通知中心、CS19我的資訊/密碼變更
+CS01 Customer Transaction Details, CS02 Game Records, CS03 Points Details, CS04 Commission Details, CS05 Fund Transfer, CS06 Deposit Request, CS07 Withdrawal Request, CS08 Buy-in Request, CS09 Electronic Receipt, CS10 Agent Home, CS11 Customer Management, CS12 Agent Commission, CS13 Agent Withdrawal, CS14 Sub-Company Home, CS15 Agent Performance, CS16 Fund Distribution, CS17 Sub-Company Withdrawal, CS18 Notification Center, CS19 My Info/Password Change
 
-## 19. 非功能需求
+## 19. Non-Functional Requirements
 
-### 19.1 效能
+### 19.1 Performance
 
-頁面載入2秒以內、交易處理500ms以內、同時連線最少50人、儀表板即時更新5秒以內
+Page load within 2 seconds, transaction processing within 500ms, minimum 50 concurrent connections, dashboard real-time updates within 5 seconds
 
-### 19.2 安全
+### 19.2 Security
 
-全段SSL/TLS HTTPS、DB加密（僅PII AES-256，金額/日期為明文）、密碼/轉帳密碼bcrypt/argon2、RBAC API層級強制、IP限制、CSRF/XSS/SQL Injection防禦
+End-to-end SSL/TLS HTTPS, DB encryption (PII only via AES-256; amounts/dates stored in plaintext), password/transfer password via bcrypt/argon2, RBAC enforced at the API layer, IP restriction, CSRF/XSS/SQL Injection protection
 
-### 19.3 備份及恢復
+### 19.3 Backup and Recovery
 
-- 每日完整備份：每日凌晨3時
-- 交易日誌：即時備份（WAL/binlog）
-- 雲端鏡像伺服器增設 `[待確認：具體鏡像方案需討論]`
-- 備份保存：最少90天 `[待確認：確認費用後重設保存期間]`
-- 恢復測試：每月1次
+- Daily full backup: 3:00 AM daily
+- Transaction logs: real-time backup (WAL/binlog)
+- Additional cloud mirror server `[TBD: specific mirroring plan needs discussion]`
+- Backup retention: minimum 90 days `[TBD: retention period to be reset after cost confirmation]`
+- Recovery testing: monthly
 
-### 19.4 審計追蹤
+### 19.4 Audit Trail
 
-所有數據變更自動記錄於activity_logs。包含變更前/後值、變更者、時間、IP。日誌不可刪除（append-only）。手動調整永久保存於manual_adjustments。
+All data changes are automatically recorded in activity_logs, including before/after values, who made the change, timestamp, and IP. Logs cannot be deleted (append-only). Manual adjustments are permanently stored in manual_adjustments.
 
-## 20. 批次作業
+## 20. Batch Jobs
 
-| 作業名 | 執行週期 | 說明 |
+| Job Name | Schedule | Description |
 | --- | --- | --- |
-| 積分失效處理 | 每日00:00 | 到期積分 → EXPIRED |
-| 積分失效通知 | 每日09:00 | 7日內即將到期通知 |
-| 資產完整性驗證 | 每小時 | 籌碼房資產交叉驗證 |
-| 會話清理 | 每5分鐘 | 未使用會話過期（營運10分鐘/客戶15分鐘） |
-| DB備份 | 每日03:00 | 完整備份執行 |
-| 取款申請過期 | 每小時 | 24小時未領取取款申請自動取消、凍結解除 |
+| Points expiration processing | Daily 00:00 | Expired points → EXPIRED |
+| Points expiration notice | Daily 09:00 | Notify of points expiring within 7 days |
+| Asset integrity verification | Hourly | Cross-validation of Cage assets |
+| Session cleanup | Every 5 minutes | Expire unused sessions (Operations: 10 min / Client: 15 min) |
+| DB backup | Daily 03:00 | Execute full backup |
+| Withdrawal request expiration | Hourly | Auto-cancel withdrawal requests not collected within 24 hours, release hold |
 
 ---
 
-**待確認事項（後續需確認）：**
+**Items pending confirmation (to be resolved later):**
 
-- `[待確認]` 6.3 驗證範例：MIMISA流程再確認後變更
-- `[待確認]` 7.1 遊戲編號：MIMISA桌號格式確認
-- `[待確認]` 12.1 結算程序：MIMISA結算程序、期間確認
-- `[待確認]` 19.3 備份：雲端鏡像具體方案討論
-- `[待確認]` 19.3 備份保存：確認費用後期間重設
+- `[TBD]` §6.3 Validation Example: subject to change after MIMISA process reconfirmation
+- `[TBD]` §7.1 Game Number: subject to confirmation of MIMISA table-number format
+- `[TBD]` §12 Settlement Procedure: MIMISA settlement procedure and period to be confirmed
+- `[TBD]` §19.3 Backup: cloud-mirroring specific plan to be discussed
+- `[TBD]` §19.3 Backup retention: period to be reset after cost confirmation
