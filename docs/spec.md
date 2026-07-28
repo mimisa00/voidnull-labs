@@ -1,10 +1,10 @@
-# MIMISA JUNKET OS — 統合 PRD v2.0 (繁體中文版) (1)
+# MIMISA OS — 統合 PRD v2.0 (繁體中文版) (1)
 
 ## 1. 項目概述
 
 ### 1.1 項目名稱
 
-MIMISA 賭廳籌碼房電算化及帳戶管理系統 (JUNKET OS)
+MIMISA 賭廳籌碼房電算化及帳戶管理系統 (MIMISA OS)
 
 ### 1.2 項目目的
 
