@@ -21,7 +21,10 @@ api.interceptors.response.use(
     const isAuthEndpoint = original?.url?.includes('/auth/login') || original?.url?.includes('/auth/2fa/verify');
     if (err.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
-      const refreshToken = localStorage.getItem('refresh_token');
+      let refreshToken: string | null = null;
+      if (typeof window !== 'undefined') {
+        refreshToken = localStorage.getItem('refresh_token');
+      }
       if (!refreshToken) { window.location.href = '/login'; return Promise.reject(err); }
       try {
         const { data } = await axios.post(`/api/auth/refresh`, { refreshToken });

@@ -1,3 +1,4 @@
+'use client';
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
@@ -23,6 +24,10 @@ const config: Config = {
         muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
         accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
         card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+        // Gold theme colors
+        gold: '#D4AF37',              // base golden color
+        goldLight: '#E8C87B',   // light variant (optional)
+        goldDark: '#A97F23',          // dark variant for dark mode
       },
       borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
       keyframes: {

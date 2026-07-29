@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -22,8 +22,8 @@ export default function LoginPage() {
         setTempToken(res.tempToken);
         setStep('totp');
       } else {
-        localStorage.setItem('access_token', res.accessToken);
-        localStorage.setItem('refresh_token', res.refreshToken);
+        localStorage.setItem('access_token', res.accessToken!);
+        localStorage.setItem('refresh_token', res.refreshToken!);
         document.cookie = `access_token=${res.accessToken}; path=/; SameSite=Strict`;
         router.push('/dashboard');
       }
@@ -37,8 +37,8 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await authApi.verifyTotp(tempToken, totpCode);
-      localStorage.setItem('access_token', res.accessToken);
-      localStorage.setItem('refresh_token', res.refreshToken);
+      localStorage.setItem('access_token', res.accessToken!);
+      localStorage.setItem('refresh_token', res.refreshToken!);
       document.cookie = `access_token=${res.accessToken}; path=/; SameSite=Strict`;
       router.push('/dashboard');
     } catch {

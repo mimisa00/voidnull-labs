@@ -1,8 +1,16 @@
-'use client';
+"use client"
+
 import { useState, useEffect } from 'react';
 import { usersApi } from '@/lib/api';
 
-interface User { id: string; email: string; username: string; displayName: string; isActive: boolean; userRoles: any[] }
+interface User {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  isActive: boolean;
+  userRoles: any[];
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -44,9 +52,7 @@ export default function UsersPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`text-xs px-2 py-1 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {u.isActive ? 'Active' : 'Inactive'}
-                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{u.isActive ? 'Active' : 'Inactive'}</span>
                 </td>
               </tr>
             ))}
