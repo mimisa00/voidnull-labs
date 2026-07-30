@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
@@ -14,6 +14,7 @@ const NAV = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout, hasPermission } = useAuth();
   const router = useRouter();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -36,31 +37,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-white shadow-sm flex flex-col">
-        <div className="p-6 border-b">
-          <h1 className="text-xl font-bold">VoidNull</h1>
-          <p className="text-xs text-gray-500 mt-1">{user.email}</p>
-          <div className="flex gap-1 flex-wrap mt-2">
-            {user.roles.map((r) => (
-              <span key={r} className="text-xs bg-black text-white px-2 py-0.5 rounded-full">{r}</span>
-            ))}
-          </div>
+      {/* Sidebar */}
+      <aside className={`bg-white shadow-sm flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+        <div className="p-4 border-b">
+          {!sidebarCollapsed && (
+            <>
+              <h1 className="text-xl font-bold text-gold">VoidNull</h1>
+              <p className="text-xs text-gray-500 mt-1">{user.email}</p>
+              <div className="flex gap-1 flex-wrap mt-2">
+                {user.roles.map((r) => (
+                  <span key={r} className="text-xs bg-gold text-white px-2 py-0.5 rounded-full">{r}</span>
+                ))}
+              </div>
+            </>
+          )}
+          {sidebarCollapsed && (
+            <div className="flex justify-center">
+              <span className="text-gold text-xl">VN</span>
+            </div>
+          )}
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+
+        <nav className="flex-1 p-2 space-y-1">
           {NAV.filter((n) => !n.perm || hasPermission(n.perm)).map((item) => (
-            <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-100 transition-colors">
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-100 transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+            >
               <span>{item.icon}</span>
-              <span>{item.label}</span>
+              {!sidebarCollapsed && <span>{item.label}</span>}
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t">
-          <button onClick={logout} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md">
-            🚪 Logout
+
+        <div className="p-2 border-t">
+          <button
+            onClick={logout}
+            className={`w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors ${sidebarCollapsed ? 'flex justify-center' : ''}`}
+          >
+            {!sidebarCollapsed ? '🚪 Logout' : '🚪'}
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-8">{children}</main>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto p-6">
+        <div className="mb-6 flex justify-between items-center">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-2 rounded-md hover:bg-gray-200 transition-colors"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? '→' : '←'}
+          </button>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
