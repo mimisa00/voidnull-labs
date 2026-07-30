@@ -32,3 +32,10 @@ es_data/
 infra/docker/certbot/conf/
 infra/docker/certbot/www/
 cloudflare.ini
+
+# hg
+.hgignore
+.hg/
+
+# git
+.git
