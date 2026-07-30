@@ -19,8 +19,34 @@
   --card: #ffffff;
   --card-foreground: #111827;
 
+  /* Gold theme colors */
+  --gold: #D4AF37;
+  --gold-light: #E8C87B;
+  --gold-dark: #A97F23;
+
   /* Radius (used in component borderRadius) */
   --radius: 0.5rem;
+}
+
+/* Dark mode overrides */
+.dark {
+  --border: #374151;
+  --input: #1f2937;
+  --ring: #3b82f6;
+  --background: #111827;
+  --foreground: #f9fafb;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #4b5563;
+  --secondary-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+  --card: #1f2937;
+  --card-foreground: #f9fafb;
 }
 
 @tailwind base;

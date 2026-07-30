@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usersApi } from '@/lib/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface User {
   id: string;
@@ -21,25 +22,32 @@ export default function UsersPage() {
     usersApi.list().then((r) => { setUsers(r.data); setTotal(r.total); }).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <div className="min-h-64 flex items-center justify-center">Loading...</div>;
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Users <span className="text-gray-400 text-sm font-normal">({total})</span></h2>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Users</CardTitle>
+          <CardDescription>Manage platform users and their access</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-500">Total users: {total}</p>
+        </CardContent>
+      </Card>
+
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roles</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-gray-200">
             {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
+              <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="font-medium">{u.displayName || u.username}</div>
                   <div className="text-sm text-gray-500">{u.email}</div>
@@ -52,7 +60,9 @@ export default function UsersPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`text-xs px-2 py-1 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{u.isActive ? 'Active' : 'Inactive'}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {u.isActive ? 'Active' : 'Inactive'}
+                  </span>
                 </td>
               </tr>
             ))}

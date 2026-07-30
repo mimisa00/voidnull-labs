@@ -5,6 +5,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface CageSummary {
   totalAssets: number;
@@ -58,65 +59,86 @@ export default function OperationsDashboard() {
       <h1 className="text-3xl font-bold mb-6">Operations Portal – Dashboard</h1>
 
       {/* KPI cards */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {summary && (
           [
             {
               title: 'Total Cage Assets',
               value: summary.totalAssets,
+              description: 'Overall assets in the cage'
             },
             {
               title: 'House Rolling',
               value: summary.houseRolling,
+              description: 'House rolling statistics'
             },
             {
               title: 'Internal Rolling',
               value: summary.internalRolling,
+              description: 'Internal rolling calculations'
             },
             {
               title: 'Unpaid Commission/Points',
               value: summary.unpaidCommission,
+              description: 'Unpaid commissions and points'
             },
           ].map((card) => (
-            <Card key={card.title} title={card.title} value={card.value} />
+            <Card key={card.title}>
+              <CardHeader>
+                <CardTitle>{card.title}</CardTitle>
+                <CardDescription>{card.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{card.value.toLocaleString()}</p>
+              </CardContent>
+            </Card>
           ))
         )}
         {pendingCount !== null && (
-          <Card title="Pending Approvals" value={pendingCount} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Approvals</CardTitle>
+              <CardDescription>Requests awaiting approval</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{pendingCount}</p>
+            </CardContent>
+          </Card>
         )}
       </section>
 
       {/* Agent performance table */}
-      <h2 className="text-2xl font-semibold mt-8 mb-4">Agent Performance</h2>
-      {perf.length > 0 ? (
-        <table className="w-full table-auto bg-white rounded-md shadow">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 text-left border-b">Agent</th>
-              <th className="px-4 py-2 text-right border-b">Commission Earned</th>
-            </tr>
-          </thead>
-          <tbody>{perf.map((p) => (
-            <tr key={p.name}>
-              <td className="border-b px-4 py-2">{p.name}</td>
-              <td className="border-b text-right px-4 py-2">
-                {p.commission.toLocaleString()}
-              </td>
-            </tr>
-          ))}</tbody>
-        </table>
-      ) : (
-        <p>No agent performance data available.</p>
-      )}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b">
+          <h2 className="text-2xl font-semibold">Agent Performance</h2>
+        </div>
+        {perf.length > 0 ? (
+          <table className="w-full table-auto">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Commission Earned</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {perf.map((p) => (
+                <tr key={p.name} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium">{p.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <span className="text-sm font-semibold">{p.commission.toLocaleString()}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-6 text-center text-gray-500">
+            No agent performance data available.
+          </div>
+        )}
+      </div>
     </main>
-  );
-}
-
-function Card({ title, value }: { title: string; value: number }) {
-  return (
-    <div className="bg-white p-4 rounded-md shadow">
-      <p className="text-sm text-gray-500">{title}</p>
-      <h3 className="text-xl font-semibold mt-1">{value.toLocaleString()}</h3>
-    </div>
   );
 }

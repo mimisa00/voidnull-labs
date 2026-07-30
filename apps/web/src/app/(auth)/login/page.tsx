@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { authApi } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 interface LoginForm { email: string; password: string; }
 
@@ -47,66 +50,84 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6">VoidNull</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-gray-200">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gold mb-2">VoidNull</h1>
+          <p className="text-gray-500">Secure Platform Access</p>
+        </div>
 
         {step === 'credentials' && (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <h2 className="text-lg font-semibold">Sign In</h2>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <Input
                 type="email"
                 {...register('email', { required: true })}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                 placeholder="admin@voidnull.io"
+                className="py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <input
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <Input
                 type="password"
                 {...register('password', { required: true })}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                 placeholder="••••••••"
+                className="py-2"
               />
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2 px-4 bg-black text-white rounded-md hover:bg-gray-800 disabled:opacity-50"
+              className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
-            </button>
+            </Button>
           </form>
         )}
 
         {step === 'totp' && (
-          <form onSubmit={onTotpSubmit} className="space-y-4">
-            <h2 className="text-lg font-semibold">Two-Factor Authentication</h2>
-            <p className="text-sm text-gray-500">Enter the 6-digit code from your authenticator app</p>
-            <input
-              type="text"
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-full px-3 py-2 border rounded-md text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-black"
-              placeholder="000000"
-              maxLength={6}
-              autoFocus
-            />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setStep('credentials')} className="flex-1 py-2 border rounded-md hover:bg-gray-50">Back</button>
-              <button type="submit" className="flex-1 py-2 bg-black text-white rounded-md hover:bg-gray-800">Verify</button>
+          <form onSubmit={onTotpSubmit} className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold text-center mb-2">Two-Factor Authentication</h2>
+              <p className="text-sm text-gray-500 text-center mb-4">Enter the 6-digit code from your authenticator app</p>
+              <Input
+                type="text"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full py-3 text-center text-2xl tracking-widest font-mono"
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+              />
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => setStep('credentials')}
+                variant="outline"
+                className="flex-1 py-2"
+              >
+                Back
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
+              >
+                Verify
+              </Button>
             </div>
           </form>
         )}
 
-        <p className="mt-4 text-xs text-center text-gray-400">
-          Demo: admin@voidnull.io / Admin@123456
-        </p>
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-xs text-center text-gray-400">
+            Demo: admin@voidnull.io / Admin@123456
+          </p>
+        </div>
       </div>
     </div>
   );
