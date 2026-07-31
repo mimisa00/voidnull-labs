@@ -3,76 +3,74 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-const RESOURCES = ['users', 'roles', 'permissions', 'audit-logs'];
-const ACTIONS = ['create', 'read', 'update', 'delete', 'list'];
-
 async function main() {
   console.log('Seeding database...');
 
-  // Create all permissions
-  const permissions: { name: string; resource: string; action: string }[] = [];
-  for (const resource of RESOURCES) {
-    for (const action of ACTIONS) {
-      permissions.push({ name: `${resource}:${action}`, resource, action });
-    }
-  }
-  // Extra special permissions
-  permissions.push({ name: 'system:admin', resource: 'system', action: 'admin' });
-
-  await prisma.permission.createMany({ data: permissions, skipDuplicates: true });
-  console.log(`Created ${permissions.length} permissions`);
-
-  // Create roles
+  // Create default roles
   const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
     update: {},
-    create: { name: 'admin', description: '全系統管理員，擁有所有權限' },
-  });
-
-  const moderatorRole = await prisma.role.upsert({
-    where: { name: 'moderator' },
-    update: {},
-    create: { name: 'moderator', description: '版主，可管理使用者但不能修改角色' },
-  });
-
-  const viewerRole = await prisma.role.upsert({
-    where: { name: 'viewer' },
-    update: {},
-    create: { name: 'viewer', description: '只讀使用者' },
-  });
-
-  // Admin gets all permissions
-  const allPermissions = await prisma.permission.findMany();
-  await prisma.rolePermission.createMany({
-    data: allPermissions.map((p) => ({ roleId: adminRole.id, permissionId: p.id })),
-    skipDuplicates: true,
-  });
-
-  // Moderator gets user read/list/update
-  const moderatorPerms = await prisma.permission.findMany({
-    where: {
-      OR: [
-        { name: { in: ['users:read', 'users:list', 'users:update', 'audit-logs:read', 'audit-logs:list'] } },
-      ],
+    create: {
+      name: 'admin',
+      description: 'Administrator role with full permissions',
     },
   });
-  await prisma.rolePermission.createMany({
-    data: moderatorPerms.map((p) => ({ roleId: moderatorRole.id, permissionId: p.id })),
-    skipDuplicates: true,
+
+  const userRole = await prisma.role.upsert({
+    where: { name: 'user' },
+    update: {},
+    create: {
+      name: 'user',
+      description: 'Regular user role',
+    },
   });
 
-  // Viewer gets only read/list on non-sensitive resources
-  const viewerPerms = await prisma.permission.findMany({
-    where: { action: { in: ['read', 'list'] }, resource: { in: ['users', 'roles'] } },
-  });
-  await prisma.rolePermission.createMany({
-    data: viewerPerms.map((p) => ({ roleId: viewerRole.id, permissionId: p.id })),
-    skipDuplicates: true,
-  });
+  // Create default permissions
+  const permissions = [
+    { name: 'users:list', resource: 'users', action: 'read' },
+    { name: 'users:create', resource: 'users', action: 'create' },
+    { name: 'users:update', resource: 'users', action: 'update' },
+    { name: 'users:delete', resource: 'users', action: 'delete' },
+    { name: 'games:create', resource: 'games', action: 'create' },
+    { name: 'games:read', resource: 'games', action: 'read' },
+    { name: 'games:update', resource: 'games', action: 'update' },
+    { name: 'games:delete', resource: 'games', action: 'delete' },
+  ];
 
-  console.log('Created roles: admin, moderator, viewer');
+  for (const perm of permissions) {
+    await prisma.permission.upsert({
+      where: { name: perm.name },
+      update: {},
+      create: perm,
+    });
+  }
 
-  // Create admin user
+  // Create role permissions
+  const rolePermissions = [
+    { roleId: adminRole.id, permissionId: 'users:list' },
+    { roleId: adminRole.id, permissionId: 'users:create' },
+    { roleId: adminRole.id, permissionId: 'users:update' },
+    { roleId: adminRole.id, permissionId: 'users:delete' },
+    { roleId: adminRole.id, permissionId: 'games:create' },
+    { roleId: adminRole.id, permissionId: 'games:read' },
+    { roleId: adminRole.id, permissionId: 'games:update' },
+    { roleId: adminRole.id, permissionId: 'games:delete' },
+  ];
+
+  for (const rp of rolePermissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: rp.roleId,
+          permissionId: rp.permissionId,
+        },
+      },
+      update: {},
+      create: rp,
+    });
+  }
+
+  // Create default admin user
   const hashedPassword = await bcrypt.hash('Admin@123456', 12);
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@voidnull.io' },
@@ -81,48 +79,34 @@ async function main() {
       email: 'admin@voidnull.io',
       username: 'admin',
       password: hashedPassword,
-      displayName: 'System Admin',
+      displayName: 'Administrator',
       isActive: true,
     },
   });
 
+  // Assign admin role to admin user
   await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
+    where: {
+      userId_roleId: {
+        userId: adminUser.id,
+        roleId: adminRole.id,
+      },
+    },
     update: {},
-    create: { userId: adminUser.id, roleId: adminRole.id },
+    create: {
+      userId: adminUser.id,
+      roleId: adminRole.id,
+    },
   });
 
-  // Create test users
-  const testPassword = await bcrypt.hash('Test@123456', 12);
-
-  const modUser = await prisma.user.upsert({
-    where: { email: 'moderator@voidnull.io' },
-    update: {},
-    create: { email: 'moderator@voidnull.io', username: 'moderator', password: testPassword, displayName: 'Moderator' },
-  });
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: modUser.id, roleId: moderatorRole.id } },
-    update: {},
-    create: { userId: modUser.id, roleId: moderatorRole.id },
-  });
-
-  const viewUser = await prisma.user.upsert({
-    where: { email: 'viewer@voidnull.io' },
-    update: {},
-    create: { email: 'viewer@voidnull.io', username: 'viewer', password: testPassword, displayName: 'Viewer' },
-  });
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: viewUser.id, roleId: viewerRole.id } },
-    update: {},
-    create: { userId: viewUser.id, roleId: viewerRole.id },
-  });
-
-  console.log('Created users: admin@voidnull.io / Admin@123456');
-  console.log('            moderator@voidnull.io / Test@123456');
-  console.log('            viewer@voidnull.io / Test@123456');
-  console.log('Seeding complete!');
+  console.log('Database seeded successfully');
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
