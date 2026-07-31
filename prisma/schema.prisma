@@ -16,7 +16,7 @@ model User {
   isActive            Boolean   @default(true)
   is2faEnabled        Boolean   @default(false)
   roles               UserRole[]
-  userRoles           UserRoles[]
+  userRoles           UserRole[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }
@@ -26,7 +26,7 @@ model Role {
   name            String    @unique
   description     String?
   rolePermissions RolePermission[]
-  userRoles       UserRoles[]
+  userRoles       UserRole[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
