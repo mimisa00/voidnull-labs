@@ -20,6 +20,7 @@ model User {
   updatedAt           DateTime  @updatedAt
   refreshTokens       RefreshToken[]
   playerGames         PlayerGame[]
+  gameHistories       GameHistory[] // Added reverse relation field
 }
 
 model Role {
