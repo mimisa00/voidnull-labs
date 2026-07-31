@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Game, PlayerGame } from '@prisma/client';
 import { AppGateway } from '../gateway/app.gateway';
 
 @Injectable()
@@ -15,7 +14,7 @@ export class GameService {
   /**
    * Create a new game instance
    */
-  async createGame(gameType: string, maxPlayers: number, buyIn: number): Promise<Game> {
+  async createGame(gameType: string, maxPlayers: number, buyIn: number): Promise<any> {
     const game = await this.prisma.game.create({
       data: {
         type: gameType,
@@ -163,7 +162,7 @@ export class GameService {
   /**
    * Start a game - transition from waiting to active state
    */
-  async startGame(gameId: string): Promise<Game> {
+  async startGame(gameId: string): Promise<any> {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: { players: true },
@@ -192,7 +191,7 @@ export class GameService {
   /**
    * End a game and determine winner
    */
-  async endGame(gameId: string): Promise<Game> {
+  async endGame(gameId: string): Promise<any> {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: { players: true },
