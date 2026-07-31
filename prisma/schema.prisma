@@ -72,6 +72,7 @@ model Game {
   players      PlayerGame[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  gameHistory  GameHistory[]
 }
 
 model PlayerGame {
@@ -97,7 +98,7 @@ model GameHistory {
   timestamp  DateTime @default(now())
   
   game       Game     @relation(fields: [gameId], references: [id])
-  winner     User     @relation(fields: [winnerId], references: [id])
+  winner     User?    @relation(fields: [winnerId], references: [id])
 }
 
 model RefreshToken {
