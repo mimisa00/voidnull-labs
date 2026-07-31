@@ -18,6 +18,8 @@ model User {
   userRoles           UserRole[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  refreshTokens       RefreshToken[]
+  playerGames         PlayerGame[]
 }
 
 model Role {
