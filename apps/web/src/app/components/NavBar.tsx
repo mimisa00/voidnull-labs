@@ -15,7 +15,8 @@ export default function NavBar() {
     <nav className="bg-gold border-b border-border px-4 py-2 flex justify-between items-center">
       <div>
         <Link href="/operations/dashboard" className="mr-4 text-black font-semibold">Operations</Link>
-        <Link href="/client/home" className="text-black font-semibold">Client</Link>
+        <Link href="/client/home" className="mr-4 text-black font-semibold">Client</Link>
+        <Link href="/games/lobby" className="text-black font-semibold">Games</Link>
       </div>
       <button
         onClick={() => setIsDark(!isDark)}

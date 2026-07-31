@@ -39,3 +39,4 @@ cloudflare.ini
 
 # git
 .git
+.aider*
