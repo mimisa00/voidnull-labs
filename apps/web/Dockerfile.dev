@@ -5,10 +5,10 @@ COPY package*.json ./
 COPY turbo.json ./
 COPY apps/web/package*.json ./apps/web/
 
-RUN npm ci
+RUN npm install --prefix apps/web
 
 COPY apps/web ./apps/web
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev", "--workspace=@voidnull/web"]
+CMD ["npm", "run", "dev", "--prefix", "apps/web"]

@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { GameService } from '../game/game.service';
+// import { GameService } from '../game/game.service';
 
 @WebSocketGateway({
   cors: { origin: '*', credentials: true },
@@ -25,7 +25,7 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
   constructor(
     private jwtService: JwtService,
     private config: ConfigService,
-    private gameService: GameService,
+    // private gameService: GameService,
   ) {}
 
   afterInit() {
@@ -77,21 +77,8 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { gameType: string; maxPlayers: number; buyIn: number }
   ) {
-    try {
-      const game = await this.gameService.createGame(data.gameType, data.maxPlayers, data.buyIn);
-
-      // Notify client of created game
-      client.emit('game:created', {
-        gameId: game.id,
-        status: game.status,
-        players: [],
-      });
-
-      return { success: true, gameId: game.id };
-    } catch (error) {
-      this.logger.error(`Error creating game: ${error.message}`);
-      return { success: false, error: 'Failed to create game' };
-    }
+    this.logger.warn('Game service removed');
+    return { success: false, error: 'Game service not available' };
   }
 
   @SubscribeMessage('game:join')
@@ -99,29 +86,8 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { gameId: string; playerId: string }
   ) {
-    try {
-      const result = await this.gameService.joinGame(data.gameId, data.playerId);
-
-      if (result.success) {
-        // Notify client of successful join
-        client.emit('game:joined', {
-          gameId: data.gameId,
-          playerPosition: result.playerPosition,
-        });
-
-        // Notify other players in the game room
-        this.server.to(`game:${data.gameId}`).emit('game:updated', {
-          gameId: data.gameId,
-          status: 'waiting',
-          players: [],
-        });
-      }
-
-      return result;
-    } catch (error) {
-      this.logger.error(`Error joining game: ${error.message}`);
-      return { success: false, error: 'Failed to join game' };
-    }
+    this.logger.warn('Game service removed');
+    return { success: false, error: 'Game service not available' };
   }
 
   @SubscribeMessage('game:action')
@@ -134,29 +100,8 @@ export class AppGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
       data?: object
     }
   ) {
-    try {
-      const result = await this.gameService.handlePlayerAction(
-        data.gameId,
-        data.playerId,
-        data.action as any,
-        data.data?.betAmount
-      );
-
-      if (result.success) {
-        // Notify all players in the game room
-        this.server.to(`game:${data.gameId}`).emit('game:updated', {
-          gameId: data.gameId,
-          status: 'active',
-          currentTurn: data.playerId,
-          players: [],
-        });
-      }
-
-      return result;
-    } catch (error) {
-      this.logger.error(`Error processing game action: ${error.message}`);
-      return { success: false, error: 'Failed to process action' };
-    }
+    this.logger.warn('Game service removed');
+    return { success: false, error: 'Game service not available' };
   }
 
   // Server-side emit methods (called by other services)

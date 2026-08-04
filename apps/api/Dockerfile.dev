@@ -8,7 +8,7 @@ COPY turbo.json ./
 COPY packages/database/package*.json ./packages/database/
 COPY apps/api/package*.json ./apps/api/
 
-RUN npm ci
+RUN npm install && npm install --prefix apps/api
 
 COPY packages/database ./packages/database
 COPY apps/api ./apps/api
@@ -17,4 +17,4 @@ RUN cd packages/database && npx prisma generate
 
 EXPOSE 3001
 
-CMD ["npm", "run", "dev", "--workspace=@voidnull/api"]
+CMD ["npm", "run", "--prefix", "apps/api", "dev"]
