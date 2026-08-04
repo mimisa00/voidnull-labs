@@ -18,7 +18,9 @@ model User {
   updatedAt     DateTime   @updatedAt
   userRoles     UserRole[]
   refreshTokens RefreshToken[]
-}
+  players Player[]
+  }
+
 
 model Role {
   id                String        @id @default(cuid())
