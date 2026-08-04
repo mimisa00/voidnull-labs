@@ -58,20 +58,21 @@ async function main() {
   ];
 
   for (const rp of rolePermissions) {
-    // 使用更简单的语法，不使用复杂的嵌套对象
-    await prisma.rolePermission.upsert({
+    // 查找已存在的rolePermission
+    const existing = await prisma.rolePermission.findUnique({
       where: {
         roleId_permissionId: {
           roleId: rp.roleId,
           permissionId: rp.permissionId,
         }
-      },
-      update: {},
-      create: {
-        roleId: rp.roleId,
-        permissionId: rp.permissionId
       }
     });
+    
+    if (!existing) {
+      await prisma.rolePermission.create({
+        data: rp
+      });
+    }
   }
 
   // Create default admin user
@@ -89,19 +90,23 @@ async function main() {
   });
 
   // Assign admin role to admin user
-  await prisma.userRole.upsert({
+  const existingUserRole = await prisma.userRole.findUnique({
     where: {
       userId_roleId: {
         userId: adminUser.id,
         roleId: adminRole.id,
-      },
-    },
-    update: {},
-    create: {
-      userId: adminUser.id,
-      roleId: adminRole.id,
-    },
+      }
+    }
   });
+  
+  if (!existingUserRole) {
+    await prisma.userRole.create({
+      data: {
+        userId: adminUser.id,
+        roleId: adminRole.id,
+      },
+    });
+  }
 
   console.log('Database seeded successfully');
 }
