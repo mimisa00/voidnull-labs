@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   UnauthorizedException,
   ConflictException,
@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import * as bcrypt from 'bcrypt';
-import authenticator from 'otplib/authenticator';
+import { generateSecret, generate, verify as otpVerify, generateURI } from 'otplib';
 import * as qrcode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { RegisterDto } from './dto/register.dto';
@@ -200,3 +200,4 @@ export class AuthService {
     return { accessToken, refreshToken: refreshTokenValue, tokenType: 'Bearer' };
   }
 }
+
