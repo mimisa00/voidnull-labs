@@ -26,8 +26,8 @@ export default function LoginPage() {
         setTempToken(res.tempToken);
         setStep('totp');
       } else {
-document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;';
-document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;';
+        document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;';
+        document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;';
 
         router.push('/dashboard');
       }
@@ -79,12 +79,12 @@ document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; 
               />
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-<Button
-               type="submit"
-               disabled={isSubmitting}
-               onClick={() => console.log('Button clicked')}
-               className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
-             >
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              onClick={() => console.log('Button clicked')}
+              className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
+            >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
