@@ -13,7 +13,7 @@ This is a monorepo using Turborepo with:
 ### Development
 ```bash
 # Start all services
-docker compose -f infra/docker/compose.dev.yml up -d
+npm run start
 
 # Run tests
 npm run test
