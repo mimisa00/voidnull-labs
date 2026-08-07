@@ -37,42 +37,38 @@ async function main() {
     { name: 'games:delete', resource: 'games', action: 'delete' },
   ];
 
-  for (const perm of permissions) {
-    await prisma.permission.upsert({
-      where: { name: perm.name },
-      update: {},
-      create: perm,
-    });
-  }
 
-  // Create role permissions
-  const rolePermissions = [
-    { roleId: adminRole.id, permissionId: 'users:list' },
-    { roleId: adminRole.id, permissionId: 'users:create' },
-    { roleId: adminRole.id, permissionId: 'users:update' },
-    { roleId: adminRole.id, permissionId: 'users:delete' },
-    { roleId: adminRole.id, permissionId: 'games:create' },
-    { roleId: adminRole.id, permissionId: 'games:read' },
-    { roleId: adminRole.id, permissionId: 'games:update' },
-    { roleId: adminRole.id, permissionId: 'games:delete' },
-  ];
+// Create permissions and build a map of name to id
+const permIdMap: Record<string,string> = {};
+for (const perm of permissions) {
+  const permission = await prisma.permission.upsert({
+    where: { name: perm.name },
+    update: {},
+    create: perm,
+  });
+  permIdMap[perm.name] = permission.id;
+}
 
-  for (const rp of rolePermissions) {
-    // 使用更简单的语法，不使用复杂的嵌套对象
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: rp.roleId,
-          permissionId: rp.permissionId,
-        }
-      },
-      update: {},
-      create: {
-        roleId: rp.roleId,
-        permissionId: rp.permissionId
-      }
-    });
-  }
+// Create role permissions
+const rolePermissions = [
+  { roleId: adminRole.id, permissionName: 'users:list' },
+  { roleId: adminRole.id, permissionName: 'users:create' },
+  { roleId: adminRole.id, permissionName: 'users:update' },
+  { roleId: adminRole.id, permissionName: 'users:delete' },
+  { roleId: adminRole.id, permissionName: 'games:create' },
+  { roleId: adminRole.id, permissionName: 'games:read' },
+  { roleId: adminRole.id, permissionName: 'games:update' },
+  { roleId: adminRole.id, permissionName: 'games:delete' },
+];
+
+for (const rp of rolePermissions) {
+  await prisma.rolePermission.create({
+    data: {
+      roleId: rp.roleId,
+      permissionId: permIdMap[rp.permissionName],
+    },
+  });
+}
 
   // Create default admin user
   const hashedPassword = await bcrypt.hash('Admin@123456', 12);
@@ -89,19 +85,12 @@ async function main() {
   });
 
   // Assign admin role to admin user
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
+await prisma.userRole.create({
+      data: {
         userId: adminUser.id,
         roleId: adminRole.id,
       },
-    },
-    update: {},
-    create: {
-      userId: adminUser.id,
-      roleId: adminRole.id,
-    },
-  });
+    });
 
   console.log('Database seeded successfully');
 }

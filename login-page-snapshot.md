@@ -1,0 +1,24 @@
+- generic [active] [ref=f3e1]:
+  - navigation [ref=f3e2]:
+    - generic [ref=f3e3]:
+      - link "Operations" [ref=f3e4] [cursor=pointer]:
+        - /url: /operations/dashboard
+      - link "Client" [ref=f3e5] [cursor=pointer]:
+        - /url: /client/home
+      - link "Games" [ref=f3e6] [cursor=pointer]:
+        - /url: /games/lobby
+    - button "Switch to dark mode" [ref=f3e7] [cursor=pointer]: 🌙
+  - generic [ref=f3e9]:
+    - generic [ref=f3e10]:
+      - heading "VoidNull" [level=1] [ref=f3e11]
+      - paragraph [ref=f3e12]: Secure Platform Access
+    - generic [ref=f3e13]:
+      - generic [ref=f3e14]:
+        - generic [ref=f3e15]: Email
+        - textbox "admin@voidnull.io" [ref=f3e16]
+      - generic [ref=f3e17]:
+        - generic [ref=f3e18]: Password
+        - textbox "••••••••" [ref=f3e19]
+      - button "Sign In" [ref=f3e20] [cursor=pointer]
+    - paragraph [ref=f3e22]: "Demo: admin@voidnull.io / Admin@123456"
+  - alert [ref=f3e23]

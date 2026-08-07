@@ -39,4 +39,9 @@ cloudflare.ini
 
 # git
 .git
-.aider*
+
+.playwright-mcp
+test-results
+tests
+test_*
+temp.json

@@ -6,14 +6,17 @@ RUN apk add --no-cache openssl
 COPY package*.json ./
 COPY turbo.json ./
 COPY packages/database/package*.json ./packages/database/
+RUN npm install
 COPY apps/api/package*.json ./apps/api/
 
-RUN npm install && npm install --prefix apps/api
+# Removed installation for apps/api to avoid duplicate @prisma/client
 
 COPY packages/database ./packages/database
 COPY apps/api ./apps/api
 
 RUN cd packages/database && npx prisma generate
+# Removed prisma generate for API to avoid duplicate client
+# Removed copy step for Prisma client
 
 EXPOSE 3001
 

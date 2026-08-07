@@ -1,15 +1,25 @@
 import axios from 'axios';
 
-const BASE = typeof window === 'undefined'
-  ? (process.env.API_INTERNAL_URL || 'http://localhost:3001/api')
-  : '/api';
+const BASE = typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL ?? '/api')
+  : (process.env.API_INTERNAL_URL ?? 'http://localhost:3001/api');
 
 export const api = axios.create({ baseURL: BASE, withCredentials: true });
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('access_token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      const cookieToken = (() => {
+        const match = document.cookie.match(/(^|; )access_token=([^;]*)/);
+        return match ? decodeURIComponent(match[2]) : null;
+      })();
+      if (cookieToken) {
+        config.headers.Authorization = `Bearer ${cookieToken}`;
+      }
+    }
   }
   return config;
 });

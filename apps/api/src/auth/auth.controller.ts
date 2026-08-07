@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get, HttpCode, HttpStatus, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, HttpCode, HttpStatus, Request, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -17,9 +17,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
   @ApiOperation({ summary: 'Login with email + password' })
-  async login(@Body() _dto: LoginDto, @Request() req) {
-    return this.authService.login(req.user);
-  }
+   async login(@Body() _dto: LoginDto, @Request() req, @Res() res) {
+     console.log('Login controller called with body:', _dto, 'user:', req.user);
+     const result = await this.authService.login(req.user);
+     return res.status(200).json(result);
+   }
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new account' })

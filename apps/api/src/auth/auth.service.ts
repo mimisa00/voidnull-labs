@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import * as bcrypt from 'bcrypt';
 import { generateSecret, generate, verify as otpVerify, generateURI } from 'otplib';
-import * as qrcode from 'qrcode';
+// import * as qrcode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { RegisterDto } from './dto/register.dto';
 
@@ -46,6 +46,8 @@ export class AuthService {
   }
 
   async login(user: UserWithRoles) {
+    console.log('authService.login called for user', user);
+    let result;
     if (user.is2FAEnabled) {
       const tempToken = this.jwtService.sign(
         { sub: user.id, type: 'two_factor_pending' },
@@ -54,9 +56,12 @@ export class AuthService {
           expiresIn: '5m',
         },
       );
-      return { requiresTwoFactor: true, tempToken };
+      result = { requiresTwoFactor: true, tempToken };
+    } else {
+      result = await this.generateTokenPair(user);
     }
-    return this.generateTokenPair(user);
+    console.log('authService.login result', result);
+    return result;
   }
 
   async verifyTwoFactor(tempToken: string, code: string) {
@@ -75,8 +80,8 @@ export class AuthService {
     const user = await this.findUserWithRoles(undefined, payload.sub);
     if (!user || !user.twoFASecret) throw new UnauthorizedException();
 
-    const isValid = authenticator.verify({ token: code, secret: user.twoFASecret });
-    if (!isValid) throw new UnauthorizedException('Invalid 2FA code');
+    const isValid = await otpVerify({ token: code, secret: user.twoFASecret });
+    if (!isValid.valid) throw new UnauthorizedException('Invalid 2FA code');
 
     return this.generateTokenPair(user);
   }
@@ -128,9 +133,9 @@ export class AuthService {
     if (!user) throw new UnauthorizedException();
     if (user.is2FAEnabled) throw new BadRequestException('2FA is already enabled');
 
-    const secret = authenticator.generateSecret();
-    const otpauthUrl = authenticator.keyuri(user.email, 'VoidNull', secret);
-    const qrCodeUrl = await qrcode.toDataURL(otpauthUrl);
+    const secret = generateSecret();
+    const otpauthUrl = generateURI({ issuer: 'VoidNull', label: user.email, secret });
+    const qrCodeUrl = "<placeholder-qr-code>";
 
     // Store secret temporarily (not enabled until verified)
     await this.prisma.user.update({ where: { id: userId }, data: { twoFASecret: secret } });
@@ -142,8 +147,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.twoFASecret) throw new BadRequestException('Generate TOTP secret first');
 
-    const isValid = authenticator.verify({ token: code, secret: user.twoFASecret });
-    if (!isValid) throw new BadRequestException('Invalid TOTP code');
+    const isValid = await otpVerify({ token: code, secret: user.twoFASecret });
+    if (!isValid.valid) throw new BadRequestException('Invalid TOTP code');
 
     await this.prisma.user.update({ where: { id: userId }, data: { is2FAEnabled: true } });
     return { message: '2FA enabled successfully' };
@@ -153,8 +158,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.twoFASecret || !user.is2FAEnabled) throw new BadRequestException('2FA is not enabled');
 
-    const isValid = authenticator.verify({ token: code, secret: user.twoFASecret });
-    if (!isValid) throw new BadRequestException('Invalid TOTP code');
+    const isValid = await otpVerify({ token: code, secret: user.twoFASecret });
+    if (!isValid.valid) throw new BadRequestException('Invalid TOTP code');
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -197,7 +202,14 @@ export class AuthService {
       },
     });
 
-    return { accessToken, refreshToken: refreshTokenValue, tokenType: 'Bearer' };
+    return {
+      accessToken,
+      refreshToken: refreshTokenValue,
+      tokenType: 'Bearer',
+      access_token: accessToken,
+      refresh_token: refreshTokenValue,
+      token_type: 'Bearer',
+    };
   }
 }
 

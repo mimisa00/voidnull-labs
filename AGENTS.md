@@ -13,7 +13,7 @@ This is a monorepo using Turborepo with:
 ### Development
 ```bash
 # Start all services
-npm run dev
+docker compose -f infra/docker/compose.dev.yml up -d
 
 # Run tests
 npm run test
@@ -26,11 +26,12 @@ npm run db:generate    # Generate Prisma client
 npm run db:migrate     # Run migrations  
 npm run db:seed        # Seed database with initial data
 ```
+```
 
 ### Docker Commands (from infra/docker/)
 ```bash
 # Start services
-docker compose -f compose.dev.yml up -d
+ docker compose -f infra/docker/compose.dev.yml up -d
 
 # View logs
 docker compose -f compose.prod.yml logs -f api
@@ -55,7 +56,7 @@ docker compose -f compose.prod.yml exec postgres psql -U $POSTGRES_USER -d $POST
 
 For local dev:
 1. Copy `.env.dev.example` to `.env` in `infra/docker/`
-2. Run `docker compose -f compose.dev.yml up -d` 
+2. Run `docker compose -f infra/docker/compose.dev.yml up -d` (starts api, web, postgres, redis via Docker Compose)
 3. Run migrations: `npx prisma migrate dev --name init`
 
 For production/staging:

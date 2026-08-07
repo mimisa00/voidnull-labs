@@ -18,6 +18,7 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginForm>();
 
   const onSubmit = async (data: LoginForm) => {
+    console.log('onSubmit called');
     setError('');
     try {
       const res = await authApi.login(data.email, data.password);
@@ -25,9 +26,9 @@ export default function LoginPage() {
         setTempToken(res.tempToken);
         setStep('totp');
       } else {
-        localStorage.setItem('access_token', res.accessToken!);
-        localStorage.setItem('refresh_token', res.refreshToken!);
-        document.cookie = `access_token=${res.accessToken}; path=/; SameSite=Strict`;
+document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;';
+document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;';
+
         router.push('/dashboard');
       }
     } catch (err: any) {
@@ -40,9 +41,9 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await authApi.verifyTotp(tempToken, totpCode);
-      localStorage.setItem('access_token', res.accessToken!);
-      localStorage.setItem('refresh_token', res.refreshToken!);
-      document.cookie = `access_token=${res.accessToken}; path=/; SameSite=Strict`;
+      document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;';
+      document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;';
+
       router.push('/dashboard');
     } catch {
       setError('Invalid 2FA code');
@@ -78,11 +79,12 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
-            >
+<Button
+               type="submit"
+               disabled={isSubmitting}
+               onClick={() => console.log('Button clicked')}
+               className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
+             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
