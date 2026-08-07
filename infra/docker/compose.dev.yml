@@ -55,7 +55,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: /bin/sh -c 'node .opencode/auto-todo.ts && npm run --prefix apps/api dev'
     volumes:
       - ../../apps/api/src:/app/apps/api/src:ro
       - ../../packages/database/prisma:/app/packages/database/prisma:ro
