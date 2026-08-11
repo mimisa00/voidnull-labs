@@ -8,7 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RbacModule } from './rbac/rbac.module';
 import { GatewayModule } from './gateway/gateway.module';
-// import { GameModule } from './game/game.module';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
@@ -24,7 +24,7 @@ import { GatewayModule } from './gateway/gateway.module';
     UsersModule,
     RbacModule,
     GatewayModule,
-    // GameModule,
+    GameModule,
   ],
 })
 export class AppModule {}

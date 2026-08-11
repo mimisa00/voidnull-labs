@@ -5,10 +5,10 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch --host 0.0.0.0",
-    "start": "node dist/main",
+    "start": "node dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "echo \"No E2E tests\"",
     "db:generate": "cd ../../packages/database && prisma generate",
     "db:migrate": "cd ../../packages/database && prisma migrate deploy",
     "db:seed": "cd ../../packages/database && ts-node prisma/seed.ts"

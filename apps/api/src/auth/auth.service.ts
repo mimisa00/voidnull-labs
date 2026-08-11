@@ -18,8 +18,8 @@ type UserWithRoles = {
   id: string;
   email: string;
   username: string;
-  is2FAEnabled: boolean;
-  twoFASecret: string | null;
+   is2FAEnabled: boolean;
+   twoFASecret: string | null;
   isActive: boolean;
   userRoles: Array<{
     role: {
@@ -163,7 +163,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { is2FAEnabled: false, twoFASecret: null },
+       data: { is2FAEnabled: false, twoFASecret: null },
     });
     return { message: '2FA disabled successfully' };
   }
