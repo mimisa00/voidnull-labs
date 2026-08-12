@@ -1,15 +1,17 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
 
 @Injectable()
 export class PermissionsService {
   constructor(private prisma: PrismaService) {}
 
   findAll() {
-    return this.prisma.permission.findMany({ orderBy: [{ resource: 'asc' }, { action: 'asc' }] });
+    return this.prisma.permission.findMany({
+      orderBy: [{ resource: 'asc' }, { action: 'asc' }],
+    })
   }
 
   findByResource(resource: string) {
-    return this.prisma.permission.findMany({ where: { resource } });
+    return this.prisma.permission.findMany({ where: { resource } })
   }
 }

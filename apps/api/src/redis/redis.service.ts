@@ -1,36 +1,36 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Redis } from 'ioredis';
+import { Injectable, Inject } from '@nestjs/common'
+import { Redis } from 'ioredis'
 
 @Injectable()
 export class RedisService {
   constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {}
 
   async get(key: string): Promise<string | null> {
-    return this.redis.get(key);
+    return this.redis.get(key)
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
     if (ttlSeconds) {
-      await this.redis.setex(key, ttlSeconds, value);
+      await this.redis.setex(key, ttlSeconds, value)
     } else {
-      await this.redis.set(key, value);
+      await this.redis.set(key, value)
     }
   }
 
   async del(key: string): Promise<void> {
-    await this.redis.del(key);
+    await this.redis.del(key)
   }
 
   async exists(key: string): Promise<boolean> {
-    return (await this.redis.exists(key)) > 0;
+    return (await this.redis.exists(key)) > 0
   }
 
   // Token blacklist helpers
   async blacklistToken(token: string, ttlSeconds: number): Promise<void> {
-    await this.set(`blacklist:${token}`, '1', ttlSeconds);
+    await this.set(`blacklist:${token}`, '1', ttlSeconds)
   }
 
   async isTokenBlacklisted(token: string): Promise<boolean> {
-    return this.exists(`blacklist:${token}`);
+    return this.exists(`blacklist:${token}`)
   }
 }
