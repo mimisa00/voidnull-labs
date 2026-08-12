@@ -35,6 +35,8 @@ async function main() {
     { name: 'games:read', resource: 'games', action: 'read' },
     { name: 'games:update', resource: 'games', action: 'update' },
     { name: 'games:delete', resource: 'games', action: 'delete' },
+    { name: 'operations:read', resource: 'operations', action: 'read' },
+    { name: 'approval:read', resource: 'approval', action: 'read' },
   ];
 
 
@@ -59,6 +61,8 @@ const rolePermissions = [
   { roleId: adminRole.id, permissionName: 'games:read' },
   { roleId: adminRole.id, permissionName: 'games:update' },
   { roleId: adminRole.id, permissionName: 'games:delete' },
+  { roleId: adminRole.id, permissionName: 'operations:read' },
+  { roleId: adminRole.id, permissionName: 'approval:read' },
 ];
 
 for (const rp of rolePermissions) {

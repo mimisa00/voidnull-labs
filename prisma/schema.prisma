@@ -22,6 +22,7 @@ model User {
   refreshTokens       RefreshToken[]
   playerGames         PlayerGame[]
   gameHistories       GameHistory[] // Added reverse relation field
+  agentPerformances   AgentPerformance[]
 }
 
 model Role {
@@ -112,4 +113,43 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model CageAsset {
+  id        String    @id @default(cuid())
+  branchId  String?
+  assetType String
+  amount    Decimal   @db.Decimal(18, 2)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([branchId])
+}
+
+model ApprovalLog {
+  id         String    @id @default(cuid())
+  targetType String
+  targetId   String
+  action     String
+  actedBy    String?
+  comment    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([targetType, action])
+  @@index([createdAt])
+}
+
+model AgentPerformance {
+  id               String    @id @default(cuid())
+  agentId          String
+  agent            User      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  commissionEarned Decimal   @db.Decimal(18, 2)
+  customerCount    Int       @default(0)
+  period           String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([agentId, period])
+  @@index([period])
 }
