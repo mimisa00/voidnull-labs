@@ -27,7 +27,7 @@ export class GameService {
   }
 
   async create(dto: CreateGameDto) {
-    return this.prisma.game.create({ data: { ...dto } });
+    return this.prisma.game.create({ data: { ...dto, status: 'waiting', pot: 0 } });
   }
 
   async update(id: string, dto: UpdateGameDto) {
