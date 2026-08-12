@@ -50,13 +50,11 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        working-directory: packages/database
         run: npx prisma generate
         env:
           DATABASE_URL: postgresql://voidnull:test_secret@localhost:5432/voidnull_test
 
       - name: Run migrations
-        working-directory: packages/database
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://voidnull:test_secret@localhost:5432/voidnull_test

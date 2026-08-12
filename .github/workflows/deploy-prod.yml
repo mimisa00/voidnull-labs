@@ -36,7 +36,7 @@ jobs:
 
             # DB migration
             docker compose -f infra/docker/compose.prod.yml run --rm api \
-              sh -c "cd /app/packages/database && npx prisma migrate deploy"
+              sh -c "cd /app && npx prisma migrate deploy"
 
             # Zero-downtime rolling deploy
             docker compose -f infra/docker/compose.prod.yml up -d --no-deps api web

@@ -15,6 +15,7 @@ model User {
   displayName         String?
   isActive            Boolean   @default(true)
   is2faEnabled        Boolean   @default(false)
+  twoFASecret         String?
   userRoles           UserRole[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt

@@ -57,7 +57,7 @@ services:
         condition: service_healthy
     volumes:
       - ../../apps/api/src:/app/apps/api/src:ro
-      - ../../packages/database/prisma:/app/packages/database/prisma:ro
+      - ../../prisma:/app/prisma:ro
 
   web:
     build:
@@ -80,7 +80,7 @@ services:
     build:
       context: ../..
       dockerfile: apps/api/Dockerfile.dev
-    command: sh -c "cd packages/database && npx prisma migrate deploy"
+    command: sh -c "npx prisma migrate deploy"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-voidnull}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-voidnull_dev}
     depends_on:

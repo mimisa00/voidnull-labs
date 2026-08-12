@@ -72,14 +72,13 @@ git commit -m "chore: add package-lock.json"
 
 **Prisma migrations**
 
-Migration files must exist in `packages/database/prisma/migrations/` before the first `docker compose up`. On a fresh repo clone they may not exist yet.
+Migration files must exist in `prisma/migrations/` before the first `docker compose up`. On a fresh repo clone they may not exist yet.
 
 ```bash
 # Run once — requires postgres container to be up
 docker compose -f infra/docker/compose.dev.yml up -d postgres
 
 set DATABASE_URL=postgresql://voidnull:secret@localhost:5432/voidnull_dev
-cd packages/database
 npx prisma migrate dev --name init
 
 # Commit so every environment picks up the migration automatically

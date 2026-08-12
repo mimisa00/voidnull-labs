@@ -304,11 +304,11 @@ echo "Restore complete. Verify data integrity."
 ```bash
 # 部署時執行（CI/CD 已自動化，手動執行如下）
 docker compose -f infra/docker/compose.prod.yml run --rm api \
-    sh -c "cd /app/packages/database && npx prisma migrate deploy"
+    sh -c "cd /app && npx prisma migrate deploy"
 
 # 查看 migration 狀態
 docker compose -f infra/docker/compose.prod.yml run --rm api \
-    sh -c "cd /app/packages/database && npx prisma migrate status"
+    sh -c "cd /app && npx prisma migrate status"
 
 # ⚠️  生產環境禁用 `prisma migrate dev`（會刪除資料）
 # 只用 `prisma migrate deploy`

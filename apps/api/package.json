@@ -9,9 +9,9 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
     "test:e2e": "echo \"No E2E tests\"",
-    "db:generate": "cd ../../packages/database && prisma generate",
-    "db:migrate": "cd ../../packages/database && prisma migrate deploy",
-    "db:seed": "cd ../../packages/database && ts-node prisma/seed.ts"
+    "db:generate": "cd ../.. && prisma generate",
+    "db:migrate": "cd ../.. && prisma migrate deploy",
+    "db:seed": "cd ../.. && ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

@@ -4,15 +4,14 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY turbo.json ./
-COPY packages/database/package*.json ./packages/database/
 COPY apps/api/package*.json ./apps/api/
 
-RUN npm ci --workspace=@voidnull/api --workspace=@voidnull/database
+RUN npm ci --workspace=@voidnull/api
 
-COPY packages/database ./packages/database
+COPY prisma ./prisma
 COPY apps/api ./apps/api
 
-RUN cd packages/database && npx prisma generate && npx tsc
+RUN npx prisma generate
 RUN cd apps/api && npm run build
 
 # ── Stage 2: Runner ───────────────────────────────────────────────────────────
@@ -24,9 +23,7 @@ RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/database/package.json ./packages/database/package.json
-COPY --from=builder /app/packages/database/dist ./packages/database/dist
-COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 

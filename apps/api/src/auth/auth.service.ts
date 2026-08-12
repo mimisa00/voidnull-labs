@@ -18,7 +18,7 @@ type UserWithRoles = {
   id: string;
   email: string;
   username: string;
-   is2FAEnabled: boolean;
+   is2faEnabled: boolean;
    twoFASecret: string | null;
   isActive: boolean;
   userRoles: Array<{
@@ -48,7 +48,7 @@ export class AuthService {
   async login(user: UserWithRoles) {
     console.log('authService.login called for user', user);
     let result;
-    if (user.is2FAEnabled) {
+    if (user.is2faEnabled) {
       const tempToken = this.jwtService.sign(
         { sub: user.id, type: 'two_factor_pending' },
         {
@@ -131,7 +131,7 @@ export class AuthService {
   async generateTotpSecret(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    if (user.is2FAEnabled) throw new BadRequestException('2FA is already enabled');
+    if (user.is2faEnabled) throw new BadRequestException('2FA is already enabled');
 
     const secret = generateSecret();
     const otpauthUrl = generateURI({ issuer: 'VoidNull', label: user.email, secret });
@@ -150,20 +150,20 @@ export class AuthService {
     const isValid = await otpVerify({ token: code, secret: user.twoFASecret });
     if (!isValid.valid) throw new BadRequestException('Invalid TOTP code');
 
-    await this.prisma.user.update({ where: { id: userId }, data: { is2FAEnabled: true } });
+    await this.prisma.user.update({ where: { id: userId }, data: { is2faEnabled: true } });
     return { message: '2FA enabled successfully' };
   }
 
   async disableTotp(userId: string, code: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.twoFASecret || !user.is2FAEnabled) throw new BadRequestException('2FA is not enabled');
+    if (!user?.twoFASecret || !user.is2faEnabled) throw new BadRequestException('2FA is not enabled');
 
     const isValid = await otpVerify({ token: code, secret: user.twoFASecret });
     if (!isValid.valid) throw new BadRequestException('Invalid TOTP code');
 
     await this.prisma.user.update({
       where: { id: userId },
-       data: { is2FAEnabled: false, twoFASecret: null },
+       data: { is2faEnabled: false, twoFASecret: null },
     });
     return { message: '2FA disabled successfully' };
   }

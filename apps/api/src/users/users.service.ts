@@ -5,7 +5,7 @@ import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto';
 
 const USER_SELECT = {
   id: true, email: true, username: true, displayName: true,
-  isActive: true, is2FAEnabled: true,
+  isActive: true, is2faEnabled: true,
   createdAt: true, updatedAt: true,
   userRoles: { include: { role: { select: { id: true, name: true } } } },
 };

@@ -21,7 +21,6 @@ variables:
       - node_modules/
       - apps/api/node_modules/
       - apps/web/node_modules/
-      - packages/database/node_modules/
 
 # ── Test ─────────────────────────────────────────────────────────────────────
 lint:
@@ -45,8 +44,7 @@ lint:
     JWT_2FA_SECRET: "ci_2fa_secret_min_32_chars_long"
   script:
     - npm ci
-    - cd packages/database && npx prisma generate && npx prisma migrate deploy
-    - cd ../..
+    - npx prisma generate && npx prisma migrate deploy
     - npm run lint
     - npm run test -- --passWithNoTests
   only:
