@@ -1,13 +1,27 @@
-"use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { authApi } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { authApi } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 
-interface LoginForm { email: string; password: string; }
+interface LoginForm { email: string; password: string }
+
+// Helper to determine redirect path based on permissions
+function getRedirectPath(permissions: string[]): string {
+  if (permissions.includes('operations:read')) {
+    return '/operations/dashboard'
+  }
+  if (permissions.includes('games:read')) {
+    return '/games/lobby'
+  }
+  if (permissions.includes('client:read')) {
+    return '/client/home'
+  }
+  return '/dashboard'
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,37 +32,46 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginForm>();
 
   const onSubmit = async (data: LoginForm) => {
-    console.log('onSubmit called');
-    setError('');
+    setError('')
     try {
-      const res = await authApi.login(data.email, data.password);
+      const res = await authApi.login(data.email, data.password)
       if (res.requiresTwoFactor) {
-        setTempToken(res.tempToken);
-        setStep('totp');
+        setTempToken(res.tempToken)
+        setStep('totp')
       } else {
-        document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;';
-        document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;';
+        // Write to both cookie and localStorage
+        document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;'
+        document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;'
+        localStorage.setItem('access_token', res.accessToken!)
+        localStorage.setItem('refresh_token', res.refreshToken!)
 
-        router.push('/dashboard');
+        // Let middleware handle the redirect based on permissions in the token
+        // Redirect to /dashboard which middleware will rewrite based on permissions
+        router.push('/dashboard')
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Login failed')
     }
-  };
+  }
 
   const onTotpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault()
+    setError('')
     try {
-      const res = await authApi.verifyTotp(tempToken, totpCode);
-      document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;';
-      document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;';
+      const res = await authApi.verifyTotp(tempToken, totpCode)
+      // Write to both cookie and localStorage
+      document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;'
+      document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;'
+      localStorage.setItem('access_token', res.accessToken!)
+      localStorage.setItem('refresh_token', res.refreshToken!)
 
-      router.push('/dashboard');
+      // Let middleware handle the redirect based on permissions in the token
+      // Redirect to /dashboard which middleware will rewrite based on permissions
+      router.push('/dashboard')
     } catch {
-      setError('Invalid 2FA code');
+      setError('Invalid 2FA code')
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
@@ -82,7 +105,6 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              onClick={() => console.log('Button clicked')}
               className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}

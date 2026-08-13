@@ -31,7 +31,8 @@ api.interceptors.response.use(
     const original = err.config
     const isAuthEndpoint =
       original?.url?.includes('/auth/login') ||
-      original?.url?.includes('/auth/2fa/verify')
+      original?.url?.includes('/auth/2fa/verify') ||
+      original?.url?.includes('/auth/me')
     if (err.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true
       let refreshToken: string | null = null
@@ -45,10 +46,16 @@ api.interceptors.response.use(
       try {
         const { data } = await axios.post(`/api/auth/refresh`, { refreshToken })
         localStorage.setItem('access_token', data.accessToken)
+        localStorage.setItem('refresh_token', data.refreshToken)
+        // Also update cookie
+        document.cookie = 'access_token=' + encodeURIComponent(data.accessToken) + '; path=/; SameSite=Lax;'
+        document.cookie = 'refresh_token=' + encodeURIComponent(data.refreshToken) + '; path=/; SameSite=Lax;'
         original.headers.Authorization = `Bearer ${data.accessToken}`
         return api(original)
       } catch {
         localStorage.clear()
+        document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
         window.location.href = '/login'
       }
     }

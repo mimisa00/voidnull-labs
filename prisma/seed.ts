@@ -37,6 +37,7 @@ async function main() {
     { name: 'games:delete', resource: 'games', action: 'delete' },
     { name: 'operations:read', resource: 'operations', action: 'read' },
     { name: 'approval:read', resource: 'approval', action: 'read' },
+    { name: 'client:read', resource: 'client', action: 'read' },
   ];
 
 
@@ -63,6 +64,9 @@ const rolePermissions = [
   { roleId: adminRole.id, permissionName: 'games:delete' },
   { roleId: adminRole.id, permissionName: 'operations:read' },
   { roleId: adminRole.id, permissionName: 'approval:read' },
+  { roleId: adminRole.id, permissionName: 'client:read' },
+  { roleId: userRole.id, permissionName: 'games:read' },
+  { roleId: userRole.id, permissionName: 'client:read' },
 ];
 
 for (const rp of rolePermissions) {
@@ -96,8 +100,30 @@ await prisma.userRole.create({
       },
     });
 
-  console.log('Database seeded successfully');
-}
+  // Create default user
+  const userHashedPassword = await bcrypt.hash('User@123456', 12);
+  const regularUser = await prisma.user.upsert({
+    where: { email: 'user@voidnull.io' },
+    update: {},
+    create: {
+      email: 'user@voidnull.io',
+      username: 'user',
+      password: userHashedPassword,
+      displayName: 'Regular User',
+      isActive: true,
+    },
+  });
+
+  // Assign user role to regular user
+  await prisma.userRole.create({
+    data: {
+      userId: regularUser.id,
+      roleId: userRole.id,
+    },
+  });
+
+   console.log('Database seeded successfully');
+ }
 
 main()
   .catch((e) => {
