@@ -1,67 +1,68 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { getSocket, connectSocket } from '@/lib/socket';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react'
+import { getSocket, connectSocket } from '@/lib/socket'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function GameLobby() {
-  const [games, setGames] = useState<any[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [games, setGames] = useState<any[]>([])
+  const [isConnected, setIsConnected] = useState(false)
 
   // Connect to WebSocket
   useEffect(() => {
-    const socket = getSocket();
+    const socket = getSocket()
 
     socket.on('connect', () => {
-      setIsConnected(true);
-      console.log('Connected to game server');
-    });
+      setIsConnected(true)
+      console.log('Connected to game server')
+    })
 
     socket.on('disconnect', () => {
-      setIsConnected(false);
-      console.log('Disconnected from game server');
-    });
+      setIsConnected(false)
+      console.log('Disconnected from game server')
+    })
 
     // Handle game updates
     socket.on('game:updated', (data) => {
-      setGames(prev => {
-        const existingIndex = prev.findIndex(g => g.id === data.gameId);
+      setGames((prev) => {
+        const existingIndex = prev.findIndex((g) => g.id === data.gameId)
         if (existingIndex >= 0) {
-          const updatedGames = [...prev];
-          updatedGames[existingIndex] = { ...updatedGames[existingIndex], ...data };
-          return updatedGames;
+          const updatedGames = [...prev]
+          updatedGames[existingIndex] = {
+            ...updatedGames[existingIndex],
+            ...data,
+          }
+          return updatedGames
         }
-        return [...prev, data];
-      });
-    });
+        return [...prev, data]
+      })
+    })
 
     // Connect to socket
-    connectSocket();
+    connectSocket()
 
     return () => {
-      socket.disconnect();
-    };
-  }, []);
+      socket.disconnect()
+    }
+  }, [])
 
   const createGame = () => {
-    const socket = getSocket();
+    const socket = getSocket()
     socket.emit('game:create', {
       gameType: 'blackjack',
       maxPlayers: 4,
-      buyIn: 100
-    });
-  };
+      buyIn: 100,
+    })
+  }
 
   return (
-    <div className="container mx-auto py-8">
+    <div>
       <h1 className="text-3xl font-bold mb-6">Game Lobby</h1>
 
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">Available Games</h2>
-        <Button onClick={createGame}>
-          Create New Game
-        </Button>
+        <Button onClick={createGame}>Create New Game</Button>
       </div>
 
       {games.length > 0 ? (
@@ -73,14 +74,21 @@ export default function GameLobby() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p><span className="font-medium">Status:</span> {game.status}</p>
-                  <p><span className="font-medium">Players:</span> {game.players?.length || 0}/{game.maxPlayers}</p>
-                  <p><span className="font-medium">Buy-in:</span> ${game.buyIn}</p>
-                  <p><span className="font-medium">Pot:</span> ${game.pot || 0}</p>
+                  <p>
+                    <span className="font-medium">Status:</span> {game.status}
+                  </p>
+                  <p>
+                    <span className="font-medium">Players:</span>{' '}
+                    {game.players?.length || 0}/{game.maxPlayers}
+                  </p>
+                  <p>
+                    <span className="font-medium">Buy-in:</span> ${game.buyIn}
+                  </p>
+                  <p>
+                    <span className="font-medium">Pot:</span> ${game.pot || 0}
+                  </p>
                 </div>
-                <Button className="mt-4 w-full">
-                  Join Game
-                </Button>
+                <Button className="mt-4 w-full">Join Game</Button>
               </CardContent>
             </Card>
           ))}
@@ -91,13 +99,13 @@ export default function GameLobby() {
             <CardTitle>No Games Available</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4">There are no active games at the moment.</p>
-            <Button onClick={createGame}>
-              Create Your First Game
-            </Button>
+            <p className="text-gray-600 mb-4">
+              There are no active games at the moment.
+            </p>
+            <Button onClick={createGame}>Create Your First Game</Button>
           </CardContent>
         </Card>
       )}
     </div>
-  );
+  )
 }

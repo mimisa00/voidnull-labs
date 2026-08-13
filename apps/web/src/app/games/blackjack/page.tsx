@@ -75,7 +75,7 @@ export default function BlackjackGame() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div>
       <h1 className="text-3xl font-bold mb-6">Blackjack Game</h1>
 
       {!gameId ? (
