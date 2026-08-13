@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { authApi } from '@/lib/api'
+import { useAuthContext } from '@/context/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -23,13 +24,31 @@ function getRedirectPath(permissions: string[]): string {
   return '/dashboard'
 }
 
+// Helper to parse JWT payload
+function getUserFromToken(token: string) {
+  try {
+    const payloadBase64 = token.split('.')[1]
+    const decoded = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload: any = JSON.parse(decoded)
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      roles: payload.roles || [],
+      permissions: payload.permissions || [],
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function LoginPage() {
-  const router = useRouter();
-  const [step, setStep] = useState<'credentials' | 'totp'>('credentials');
-  const [tempToken, setTempToken] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [error, setError] = useState('');
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginForm>();
+  const router = useRouter()
+  const { login } = useAuthContext()
+  const [step, setStep] = useState<'credentials' | 'totp'>('credentials')
+  const [tempToken, setTempToken] = useState('')
+  const [totpCode, setTotpCode] = useState('')
+  const [error, setError] = useState('')
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginForm>()
 
   const onSubmit = async (data: LoginForm) => {
     setError('')
@@ -39,11 +58,17 @@ export default function LoginPage() {
         setTempToken(res.tempToken)
         setStep('totp')
       } else {
-        // Write to both cookie and localStorage
+        // Write to cookie (localStorage is optional for cleanup)
         document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;'
         document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;'
         localStorage.setItem('access_token', res.accessToken!)
         localStorage.setItem('refresh_token', res.refreshToken!)
+
+        // Update AuthContext immediately with user data from token
+        const user = getUserFromToken(res.accessToken!)
+        if (user) {
+          login(user)
+        }
 
         // Let middleware handle the redirect based on permissions in the token
         // Redirect to /dashboard which middleware will rewrite based on permissions
@@ -59,11 +84,17 @@ export default function LoginPage() {
     setError('')
     try {
       const res = await authApi.verifyTotp(tempToken, totpCode)
-      // Write to both cookie and localStorage
+      // Write to cookie (localStorage is optional for cleanup)
       document.cookie = 'access_token=' + encodeURIComponent(res.accessToken!) + '; path=/; SameSite=Lax;'
       document.cookie = 'refresh_token=' + encodeURIComponent(res.refreshToken!) + '; path=/; SameSite=Lax;'
       localStorage.setItem('access_token', res.accessToken!)
       localStorage.setItem('refresh_token', res.refreshToken!)
+
+      // Update AuthContext immediately with user data from token
+      const user = getUserFromToken(res.accessToken!)
+      if (user) {
+        login(user)
+      }
 
       // Let middleware handle the redirect based on permissions in the token
       // Redirect to /dashboard which middleware will rewrite based on permissions

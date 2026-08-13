@@ -9,17 +9,11 @@ export const api = axios.create({ baseURL: BASE, withCredentials: true })
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('access_token')
+    // Read token from cookie (unified source)
+    const match = document.cookie.match(/(^|; )access_token=([^;]*)/)
+    const token = match ? decodeURIComponent(match[2]) : null
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-    } else {
-      const cookieToken = (() => {
-        const match = document.cookie.match(/(^|; )access_token=([^;]*)/)
-        return match ? decodeURIComponent(match[2]) : null
-      })()
-      if (cookieToken) {
-        config.headers.Authorization = `Bearer ${cookieToken}`
-      }
     }
   }
   return config
@@ -37,7 +31,9 @@ api.interceptors.response.use(
       original._retry = true
       let refreshToken: string | null = null
       if (typeof window !== 'undefined') {
-        refreshToken = localStorage.getItem('refresh_token')
+        // Read refresh token from cookie (unified source)
+        const match = document.cookie.match(/(^|; )refresh_token=([^;]*)/)
+        refreshToken = match ? decodeURIComponent(match[2]) : null
       }
       if (!refreshToken) {
         window.location.href = '/login'
@@ -45,17 +41,19 @@ api.interceptors.response.use(
       }
       try {
         const { data } = await axios.post(`/api/auth/refresh`, { refreshToken })
-        localStorage.setItem('access_token', data.accessToken)
-        localStorage.setItem('refresh_token', data.refreshToken)
-        // Also update cookie
+        // Update cookie (primary source)
         document.cookie = 'access_token=' + encodeURIComponent(data.accessToken) + '; path=/; SameSite=Lax;'
         document.cookie = 'refresh_token=' + encodeURIComponent(data.refreshToken) + '; path=/; SameSite=Lax;'
+        // Also update localStorage for cleanup compatibility
+        localStorage.setItem('access_token', data.accessToken)
+        localStorage.setItem('refresh_token', data.refreshToken)
         original.headers.Authorization = `Bearer ${data.accessToken}`
         return api(original)
       } catch {
-        localStorage.clear()
+        // Clear both cookie and localStorage
         document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
         document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        localStorage.clear()
         window.location.href = '/login'
       }
     }
