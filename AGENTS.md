@@ -31,27 +31,20 @@ Traps:
 
 ## Repo layout & the broken workspace
 
-Root `package.json` has **no `workspaces` field**; there is no `pnpm-workspace.yaml`. `apps/api`, `apps/web`, `packages/database` are `"extraneous": true` in the lockfile. `turbo` and `next` are **not** in root `node_modules`. `turbo.json` exists but is a **dead file** — its task deps (`test dependsOn ^build`, `db:seed dependsOn db:migrate`) never run. `apps/api/node_modules` does not exist (it uses root deps); `apps/web` and `packages/database` have their own. `apps/web/package.json` has a suspicious self-referential dep `"voidnull-labs": "file:../.."`.
+Root `package.json` has **no `workspaces` field**; there is no `pnpm-workspace.yaml`. `turbo` and `next` are **not** in root `node_modules`. `turbo.json` exists but is a **dead file** — its task deps (`test dependsOn ^build`, `db:seed dependsOn db:migrate`) never run. `apps/api/node_modules` does not exist (it uses root deps); `apps/web` has its own. `apps/web/package.json` has a suspicious self-referential dep `"voidnull-labs": "file:../.."`. **`packages/` directory was removed on 2026-08-12 (commits 005c328, c8cf0ba); all Prisma-related files (schema, migrations, seed) are now consolidated at repo root.**
 
 - `apps/api` — all business logic (auth, users, rbac, game, gateway, redis, prisma).
 - `apps/web` — Next.js App Router + Tailwind + shadcn/ui.
-- `packages/database` — Prisma seed + a 10-line re-export of `@prisma/client` (`packages/database/src/index.ts`). **Grep confirms zero imports of `@voidnull/database` anywhere.** `apps/api/src/prisma/prisma.service.ts` imports `PrismaClient` directly. Do not assume `packages/*` is a shared layer.
-- `packages/tsconfig` — dead; nothing extends `base.json`, and its declared `nextjs.json`/`nestjs.json` don't exist.
-- `prisma/` (root) — authoritative schema + the only real migration SQL.
+- `prisma/` (root) — authoritative schema + migrations. Prisma seed and code generation now run from root.
 - `infra/` — `docker/` (dev/staging/prod compose, certbot) and `nginx/` are **siblings**, not nested. `monitoring/` is at the **repo root**, not under `infra/` — a separate compose, not wired in.
 
 ## Prisma / schema conflict — READ FIRST
 
-**`prisma/schema.prisma` at repo root is the authoritative schema.** `packages/database/prisma/schema.prisma` is stale and non-canonical — do not edit it as if it were live, and do not "sync" one to the other without being asked.
+**`prisma/schema.prisma` at repo root is the authoritative schema.** All Prisma operations (generate, migrate, seed) now run from root against this schema.
 
-There is a **known, unresolved defect** here. Do not paper over it:
+**2FA defect — RESOLVED**: This section documents a **previously unresolved defect that has been fixed**. For context: `apps/api/src/auth/auth.service.ts` previously read/wrote `twoFASecret` and `is2FAEnabled`, but the root schema had neither the `twoFASecret` column nor consistent casing for `is2FAEnabled`. **This was fully resolved in commit 005c328 (2026-08-12)**: the schema now includes `twoFASecret String?`, all code references to `is2FAEnabled` were unified to `is2faEnabled` (6 occurrences across `auth.service.ts` and `users.service.ts`), and migration `20260812062027_add_two_fa_secret` was added to sync the DB. **If you encounter 2FA field mismatches again, that is a new regression, not the old issue resurfacing.** Surface it to the user immediately.
 
-1. `apps/api/src/auth/auth.service.ts` reads/writes `twoFASecret` and `is2FAEnabled`. Neither exists in the root schema or its migration — root has `is2faEnabled` (different casing) and **no** `twoFASecret` column at all. **2FA is broken against a migrated DB.**
-2. CI and docker compose run `prisma migrate deploy` inside `packages/database`, whose `prisma/migrations/` directory exists but is **empty** — the only real migration is root `prisma/migrations/20260731084412_init/`.
-
-If you touch auth or migrations, surface this to the user and get a decision. Do not silently add columns, silently switch the canonical schema, or silently redirect the migrate step — each of those changes product behaviour.
-
-Also: `prisma generate` should run **only** in `packages/database`. `apps/api/Dockerfile.dev` has an explicit comment that API-side generate was removed to avoid a duplicate client — don't add `@prisma/client` or a generate step under `apps/api`. `packages/database/prisma/game.schema.prisma` is a fragment with no `generator`/`datasource` block; Prisma never loads it.
+CI and docker compose now run `prisma migrate deploy` and `prisma generate` from repo root against `prisma/migrations/` (currently: `20260731084412_init/` and `20260812062027_add_two_fa_secret`). `apps/api/Dockerfile.dev` contains `RUN npx prisma generate` (operating on root schema), though an outdated comment nearby claims "Removed prisma generate for API to avoid duplicate client" — this comment contradicts the actual code and is a documentation artifact awaiting cleanup.
 
 ## Architecture & wiring gotchas
 
@@ -88,7 +81,7 @@ Also: `prisma generate` should run **only** in `packages/database`. `apps/api/Do
 
 ## CI, hooks, git
 
-- `.github/workflows/ci.yml`, job `lint-and-test` (push to main/develop/staging, PR to main/develop), services postgres:16-alpine + redis:7-alpine. Order: `npm ci` → `npx prisma generate` (in `packages/database`) → `npx prisma migrate deploy` (in `packages/database`, **the broken step above**) → `npm run lint` → `npm run test -- --passWithNoTests`. Note CI runs `lint` (with `--fix`), not `lint:check`, and `--passWithNoTests` makes the test gate weak — green CI is not strong evidence.
+- `.github/workflows/ci.yml`, job `lint-and-test` (push to main/develop/staging, PR to main/develop), services postgres:16-alpine + redis:7-alpine. Order: `npm ci` → `npx prisma generate` → `npx prisma migrate deploy` → `npm run lint` → `npm run test -- --passWithNoTests`. Note CI runs `lint` (with `--fix`), not `lint:check`, and `--passWithNoTests` makes the test gate weak — green CI is not strong evidence.
 - Job `build` (needs lint-and-test, main/staging only) does ghcr.io login + docker build of `apps/api/Dockerfile` and `apps/web/Dockerfile` with context = repo root. Also `deploy-staging.yml` (SSH to `/opt/voidnull`, compose pull, migrate, rolling restart, health check) and `deploy-prod.yml`.
 - `.gitlab-ci.yml.example` is **not active**, despite README claiming GitLab CI.
 - `.husky/pre-commit` is **active**: `npx lint-staged` then `npm test --silent`. **Every commit runs the full test suite (~18s).** No commitlint.
@@ -101,12 +94,11 @@ Also: `prisma generate` should run **only** in `packages/database`. `apps/api/Do
 
 ## Known broken or disabled
 
-- **2FA + `packages/database` migrate path** — see the Prisma section. Highest-risk item in the repo.
 - **`game` module is half-removed**: `app.gateway.ts`'s three `game:*` handlers all return `{ success: false, error: 'Game service not available' }` and the `GameService` import is commented out, yet `GameModule` is still registered, `GameController` still exposes full REST CRUD, and `apps/web/src/app/games/blackjack/` still exists. **REST works, WebSocket does not.**
 - **`ThrottlerModule` is commented out in `app.module.ts`** — there is currently **no rate limiting**, despite `docs/spec.md:225` claiming 60 requests/minute.
 - **ESLint enforces nothing** (empty `rules: {}`).
 - **`turbo.json` is dead config** (turbo not installed).
-- Stale/iteration leftovers, not canonical: `packages/database/prisma/seed_fixed.ts`, `manual_seed.ts` (uses a `roleId_permissionId` composite unique that neither schema defines — it cannot run), `packages/database/create-admin.js`, `create-admin-host.js`, `apps/api/test_login.js`, `cypress/`.
+- Stale/iteration leftovers, not canonical: `apps/api/test_login.js`, `cypress/`.
 - `@docs/` is an empty directory. References to `@docs/code-standards.md` mean `docs/code-standards.md`.
 - `design/architecture_spec.md` is mojibake-corrupted (UTF-8/Big5 mix) and partly unreadable — don't quote it as a spec.
 - Artifacts: `.playwright-mcp/`, `.qa-artifacts/`, `test-results/`. **`test-results/` is currently untracked and not gitignored** — don't commit it.
