@@ -2,20 +2,24 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 
-type Theme = 'light' | 'dark'
+export type ThemeChoice = 'light' | 'dark' | 'system'
+export type ResolvedTheme = 'light' | 'dark'
 
 interface ThemeContextType {
-  theme: Theme
-  toggleTheme: () => void
+  choice: ThemeChoice
+  resolvedTheme: ResolvedTheme
+  setChoice: (choice: ThemeChoice) => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 // Helper to safely read from localStorage
-function getStoredTheme(): Theme | null {
+function getStoredChoice(): ThemeChoice | null {
   try {
-    const stored = localStorage.getItem('theme')
-    return stored === 'light' || stored === 'dark' ? stored : null
+    const stored = localStorage.getItem('themeChoice')
+    return stored === 'light' || stored === 'dark' || stored === 'system'
+      ? (stored as ThemeChoice)
+      : null
   } catch {
     // localStorage not available (private mode, etc.)
     return null
@@ -23,16 +27,16 @@ function getStoredTheme(): Theme | null {
 }
 
 // Helper to safely write to localStorage
-function setStoredTheme(theme: Theme): void {
+function setStoredChoice(choice: ThemeChoice): void {
   try {
-    localStorage.setItem('theme', theme)
+    localStorage.setItem('themeChoice', choice)
   } catch {
     // localStorage not available - silently fail, theme still works client-side
   }
 }
 
 // Helper to get system preference
-function getSystemTheme(): Theme {
+function getSystemTheme(): ResolvedTheme {
   try {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
@@ -42,17 +46,50 @@ function getSystemTheme(): Theme {
   }
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+// Helper to resolve choice to actual theme
+function resolveTheme(choice: ThemeChoice): ResolvedTheme {
+  if (choice === 'system') {
+    return getSystemTheme()
+  }
+  return choice
+}
 
-  // Sync state with DOM on mount (inline script in layout already applied class)
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [choice, setChoiceState] = useState<ThemeChoice>('system')
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
+
+  // Initialize choice from localStorage on mount
   useEffect(() => {
-    const stored = getStoredTheme()
-    const currentTheme = stored || getSystemTheme()
-    setTheme(currentTheme)
+    const stored = getStoredChoice()
+    const initialChoice = stored || 'system'
+    setChoiceState(initialChoice)
+
+    const resolved = resolveTheme(initialChoice)
+    setResolvedTheme(resolved)
+    applyTheme(resolved)
   }, [])
 
-  const applyTheme = (newTheme: Theme) => {
+  // Manage mediaQuery listener based on current choice
+  useEffect(() => {
+    if (choice === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+      const handleChange = () => {
+        const newResolved = getSystemTheme()
+        setResolvedTheme(newResolved)
+        applyTheme(newResolved)
+      }
+
+      mediaQuery.addEventListener('change', handleChange)
+      return () => mediaQuery.removeEventListener('change', handleChange)
+    } else {
+      // When choice is 'light' or 'dark', directly set resolvedTheme
+      setResolvedTheme(choice)
+      applyTheme(choice)
+    }
+  }, [choice])
+
+  const applyTheme = (newTheme: ResolvedTheme) => {
     const html = document.documentElement
     if (newTheme === 'dark') {
       html.classList.add('dark')
@@ -61,15 +98,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light'
-    setTheme(newTheme)
-    setStoredTheme(newTheme)
-    applyTheme(newTheme)
+  const setChoice = (newChoice: ThemeChoice) => {
+    setChoiceState(newChoice)
+    setStoredChoice(newChoice)
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ choice, resolvedTheme, setChoice }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -78,8 +113,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext)
   if (context === undefined) {
-    // Return default theme during SSR
-    return { theme: 'light' as Theme, toggleTheme: () => {} }
+    // Return default during SSR
+    return {
+      choice: 'system' as ThemeChoice,
+      resolvedTheme: 'light' as ResolvedTheme,
+      setChoice: () => {},
+    }
   }
   return context
 }

@@ -71,7 +71,7 @@ export default function BlackjackGame() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Blackjack Game</h1>
+      <h1 className="text-3xl font-bold mb-6 text-primary">Blackjack Game</h1>
 
       {!gameId ? (
         <Card>

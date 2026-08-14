@@ -42,6 +42,10 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        header: {
+          DEFAULT: 'hsl(var(--header))',
+          foreground: 'hsl(var(--header-foreground))',
+        },
         // Gold theme colors
         gold: 'hsl(var(--gold))',
         goldLight: 'hsl(var(--gold-light))',

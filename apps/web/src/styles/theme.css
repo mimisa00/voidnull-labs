@@ -19,6 +19,10 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
+  /* Header colors – light mode same as primary */
+  --header: 42 85% 55%;
+  --header-foreground: 30 30% 15%;
+
   /* Gold theme colors */
   --gold: 42 85% 55%;
   --gold-light: 42 85% 70%;
@@ -47,6 +51,10 @@
   --muted-foreground: 40 15% 70%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
+
+  /* Header colors – dark mode uses deep coffee brown background */
+  --header: 30 30% 18%;
+  --header-foreground: 40 20% 92%;
 
   /* Gold theme colors – brighter in dark mode */
   --gold: 42 90% 60%;

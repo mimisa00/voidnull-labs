@@ -58,7 +58,7 @@ export default function GameLobby() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Game Lobby</h1>
+      <h1 className="text-3xl font-bold mb-6 text-primary">Game Lobby</h1>
 
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">Available Games</h2>
