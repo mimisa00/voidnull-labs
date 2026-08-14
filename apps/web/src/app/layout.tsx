@@ -2,6 +2,7 @@ import '../styles/theme.css'
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/context/auth-context'
+import { ThemeProvider } from '@/context/theme-context'
 import NavBar from './components/NavBar'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -11,14 +12,35 @@ export const metadata = {
   description: 'Modern web platform',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="zh-TW" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('theme') ||
+                  (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark')
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
-        <AuthProvider>
-          <NavBar />
-          {children}
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <NavBar />
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

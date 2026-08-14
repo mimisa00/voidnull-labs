@@ -99,7 +99,7 @@ export default function GameLobby() {
             <CardTitle>No Games Available</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               There are no active games at the moment.
             </p>
             <Button onClick={createGame}>Create Your First Game</Button>

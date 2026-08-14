@@ -1,78 +1,73 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { getSocket, connectSocket } from '@/lib/socket';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  PlayerHand,
-  DealerHand,
-  GameControls,
-  GameStatus
-} from './components';
+import { useState, useEffect } from 'react'
+import { getSocket, connectSocket } from '@/lib/socket'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PlayerHand, DealerHand, GameControls, GameStatus } from './components'
 
 export default function BlackjackGame() {
-  const [gameId, setGameId] = useState<string | null>(null);
-  const [playerPosition, setPlayerPosition] = useState<number | null>(null);
-  const [gameState, setGameState] = useState<any>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [gameId, setGameId] = useState<string | null>(null)
+  const [playerPosition, setPlayerPosition] = useState<number | null>(null)
+  const [gameState, setGameState] = useState<any>(null)
+  const [isConnected, setIsConnected] = useState(false)
 
   // Connect to WebSocket
   useEffect(() => {
-    const socket = getSocket();
+    const socket = getSocket()
 
     socket.on('connect', () => {
-      setIsConnected(true);
-      console.log('Connected to game server');
-    });
+      setIsConnected(true)
+      console.log('Connected to game server')
+    })
 
     socket.on('disconnect', () => {
-      setIsConnected(false);
-      console.log('Disconnected from game server');
-    });
+      setIsConnected(false)
+      console.log('Disconnected from game server')
+    })
 
     // Handle game events
     socket.on('game:created', (data) => {
-      setGameId(data.gameId);
-      console.log('Game created:', data.gameId);
-    });
+      setGameId(data.gameId)
+      console.log('Game created:', data.gameId)
+    })
 
     socket.on('game:joined', (data) => {
-      setPlayerPosition(data.playerPosition);
-      console.log('Joined game at position:', data.playerPosition);
-    });
+      setPlayerPosition(data.playerPosition)
+      console.log('Joined game at position:', data.playerPosition)
+    })
 
     socket.on('game:updated', (data) => {
-      setGameState(data);
-      console.log('Game updated:', data);
-    });
+      setGameState(data)
+      console.log('Game updated:', data)
+    })
 
     // Connect to socket
-    connectSocket();
+    connectSocket()
 
     return () => {
-      socket.disconnect();
-    };
-  }, []);
+      socket.disconnect()
+    }
+  }, [])
 
   const createGame = () => {
-    const socket = getSocket();
+    const socket = getSocket()
     socket.emit('game:create', {
       gameType: 'blackjack',
       maxPlayers: 4,
-      buyIn: 100
-    });
-  };
+      buyIn: 100,
+    })
+  }
 
   const joinGame = () => {
-    if (!gameId) return;
+    if (!gameId) return
 
-    const socket = getSocket();
+    const socket = getSocket()
     socket.emit('game:join', {
       gameId,
-      playerId: 'current-user-id' // This would come from authentication context
-    });
-  };
+      playerId: 'current-user-id', // This would come from authentication context
+    })
+  }
 
   return (
     <div>
@@ -87,7 +82,9 @@ export default function BlackjackGame() {
             <Button onClick={createGame} className="mr-4">
               Create Game
             </Button>
-            <p className="mt-4 text-gray-600">Create a new Blackjack game room to start playing!</p>
+            <p className="mt-4 text-muted-foreground">
+              Create a new Blackjack game room to start playing!
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -113,7 +110,9 @@ export default function BlackjackGame() {
                     />
                   </>
                 ) : (
-                  <p className="text-center py-8 text-gray-500">Waiting for game to start...</p>
+                  <p className="text-center py-8 text-muted-foreground">
+                    Waiting for game to start...
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -124,12 +123,12 @@ export default function BlackjackGame() {
             <GameControls
               onAction={(action) => {
                 if (gameId) {
-                  const socket = getSocket();
+                  const socket = getSocket()
                   socket.emit('game:action', {
                     gameId,
                     action,
-                    playerId: 'current-user-id'
-                  });
+                    playerId: 'current-user-id',
+                  })
                 }
               }}
             />
@@ -139,5 +138,5 @@ export default function BlackjackGame() {
         </div>
       )}
     </div>
-  );
+  )
 }

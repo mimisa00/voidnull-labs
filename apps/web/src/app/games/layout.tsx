@@ -45,28 +45,28 @@ export default function GamesLayout({
   if (!user) return null
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-white shadow-sm flex flex-col">
-        <div className="p-6 border-b">
-          <h1 className="text-xl font-bold">Games</h1>
-          <p className="text-xs text-gray-500 mt-1">{user.email}</p>
+    <div className="flex h-screen bg-background">
+      <aside className="w-64 bg-secondary shadow-sm flex flex-col">
+        <div className="p-6 border-b border-border">
+          <h1 className="text-xl font-bold text-primary">Games</h1>
+          <p className="text-xs text-muted-foreground mt-1">{user.email}</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-secondary-foreground hover:bg-primary/20 transition-colors"
             >
               <span>{item.icon}</span>
               <span>{item.label}</span>
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-border">
           <button
             onClick={logout}
-            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"
+            className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg"
           >
             🚪 Logout
           </button>

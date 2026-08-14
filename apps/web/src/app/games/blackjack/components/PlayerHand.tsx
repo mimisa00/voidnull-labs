@@ -1,8 +1,8 @@
-import React from 'react';
+import React from 'react'
 
 interface PlayerHandProps {
-  hand: string[];
-  position: number | null;
+  hand: string[]
+  position: number | null
 }
 
 export const PlayerHand: React.FC<PlayerHandProps> = ({ hand, position }) => {
@@ -14,15 +14,15 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ hand, position }) => {
           hand.map((card, index) => (
             <div
               key={index}
-              className="bg-white border-2 border-gray-300 rounded-lg w-16 h-24 flex items-center justify-center text-xl font-bold shadow-md"
+              className="bg-card border-2 border-border rounded-lg w-16 h-24 flex items-center justify-center text-xl font-bold shadow-md text-card-foreground"
             >
               {card}
             </div>
           ))
         ) : (
-          <p className="text-gray-500">No cards dealt yet</p>
+          <p className="text-muted-foreground">No cards dealt yet</p>
         )}
       </div>
     </div>
-  );
-};
+  )
+}

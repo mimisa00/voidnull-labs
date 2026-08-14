@@ -6,14 +6,6 @@ import { authApi } from '@/lib/api'
 import { useAuthContext } from '@/context/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
 
 interface LoginForm {
   email: string
@@ -83,8 +75,12 @@ export default function LoginPage() {
           'refresh_token=' +
           encodeURIComponent(res.refreshToken!) +
           '; path=/; SameSite=Lax;'
-        localStorage.setItem('access_token', res.accessToken!)
-        localStorage.setItem('refresh_token', res.refreshToken!)
+        try {
+          localStorage.setItem('access_token', res.accessToken!)
+          localStorage.setItem('refresh_token', res.refreshToken!)
+        } catch {
+          // localStorage not available - silently fail, cookies are sufficient
+        }
 
         // Update AuthContext immediately with user data from token
         const user = getUserFromToken(res.accessToken!)
@@ -119,8 +115,12 @@ export default function LoginPage() {
         'refresh_token=' +
         encodeURIComponent(res.refreshToken!) +
         '; path=/; SameSite=Lax;'
-      localStorage.setItem('access_token', res.accessToken!)
-      localStorage.setItem('refresh_token', res.refreshToken!)
+      try {
+        localStorage.setItem('access_token', res.accessToken!)
+        localStorage.setItem('refresh_token', res.refreshToken!)
+      } catch {
+        // localStorage not available - silently fail, cookies are sufficient
+      }
 
       // Update AuthContext immediately with user data from token
       const user = getUserFromToken(res.accessToken!)
@@ -142,7 +142,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Loading overlay with fade animation */}
       <div
         className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center transition-opacity duration-300 ${
@@ -152,21 +152,23 @@ export default function LoginPage() {
         }`}
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-white border-t-gold rounded-full animate-spin" />
-          <p className="text-white text-sm font-medium">Signing in...</p>
+          <div className="w-12 h-12 border-4 border-primary border-t-accent rounded-full animate-spin" />
+          <p className="text-primary-foreground text-sm font-medium">
+            Signing in...
+          </p>
         </div>
       </div>
 
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-gray-200">
+      <div className="w-full max-w-md p-8 bg-card rounded-xl shadow-lg border border-border">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gold mb-2">VoidNull</h1>
-          <p className="text-gray-500">Secure Platform Access</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">VoidNull</h1>
+          <p className="text-muted-foreground">Secure Platform Access</p>
         </div>
 
         {step === 'credentials' && (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Email
               </label>
               <Input
@@ -177,7 +179,7 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Password
               </label>
               <Input
@@ -193,10 +195,10 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-2 bg-primary hover:bg-accent text-primary-foreground rounded-full transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
               )}
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
@@ -206,10 +208,10 @@ export default function LoginPage() {
         {step === 'totp' && (
           <form onSubmit={onTotpSubmit} className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-center mb-2">
+              <h2 className="text-xl font-semibold text-center mb-2 text-foreground">
                 Two-Factor Authentication
               </h2>
-              <p className="text-sm text-gray-500 text-center mb-4">
+              <p className="text-sm text-muted-foreground text-center mb-4">
                 Enter the 6-digit code from your authenticator app
               </p>
               <Input
@@ -231,19 +233,18 @@ export default function LoginPage() {
               <Button
                 type="button"
                 onClick={() => setStep('credentials')}
-                variant="outline"
-                className="flex-1 py-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="flex-1 py-2 border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-70 disabled:cursor-not-allowed rounded-full"
                 disabled={isVerifying}
               >
                 Back
               </Button>
               <Button
                 type="submit"
-                className="flex-1 py-2 bg-gold hover:bg-goldDark text-white rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-primary hover:bg-accent text-primary-foreground rounded-full transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 disabled={isVerifying}
               >
                 {isVerifying && (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 )}
                 {isVerifying ? 'Verifying...' : 'Verify'}
               </Button>
@@ -251,8 +252,8 @@ export default function LoginPage() {
           </form>
         )}
 
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-center text-gray-400">
+        <div className="mt-6 pt-6 border-t border-border">
+          <p className="text-xs text-center text-muted-foreground">
             Demo: admin@voidnull.io / Admin@123456
           </p>
         </div>

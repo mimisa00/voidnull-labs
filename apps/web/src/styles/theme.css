@@ -1,57 +1,57 @@
 /* apps/web/src/styles/theme.css */
 :root {
-  /* Base theme colors – simple elegant brown & gold theme */
-  --border: 30 22% 29%;
-  --input: 18 45% 11%;
-  --ring: 46 65% 52%;
-  --background: 27 45% 16%;
-  --foreground: 30 29% 95%;
-  --primary: 46 65% 52%;
-  --primary-foreground: 24 24% 8%;
-  --secondary: 29 18% 35%;
-  --secondary-foreground: 30 29% 95%;
+  /* Light mode – warm brown & gold palette */
+  --background: 40 25% 92%;
+  --foreground: 30 30% 15%;
+  --primary: 42 85% 55%;
+  --primary-foreground: 30 30% 15%;
+  --secondary: 30 20% 40%;
+  --secondary-foreground: 40 25% 92%;
+  --accent: 42 85% 55%;
+  --accent-foreground: 30 30% 15%;
+  --card: 40 20% 95%;
+  --card-foreground: 30 30% 15%;
+  --input: 40 20% 88%;
+  --border: 30 15% 75%;
+  --ring: 42 85% 55%;
+  --muted: 30 15% 75%;
+  --muted-foreground: 30 20% 50%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 30 22% 29%;
-  --muted-foreground: 35 23% 70%;
-  --accent: 46 65% 52%;
-  --accent-foreground: 24 24% 8%;
-  --card: 18 45% 11%;
-  --card-foreground: 30 29% 95%;
 
   /* Gold theme colors */
-  --gold: 46 65% 52%;
-  --gold-light: 42 70% 70%;
-  --gold-dark: 41 66% 40%;
+  --gold: 42 85% 55%;
+  --gold-light: 42 85% 70%;
+  --gold-dark: 42 85% 40%;
 
   /* Radius (used in component borderRadius) */
   --radius: 0.75rem;
 }
 
-/* Dark mode overrides – deeper, higher contrast version */
+/* Dark mode – deeper brown & gold palette, same family */
 .dark {
-  --border: 30 22% 24%;
-  --input: 18 45% 6%;
-  --ring: 46 65% 55%;
-  --background: 27 45% 11%;
-  --foreground: 30 29% 98%;
-  --primary: 46 65% 55%;
-  --primary-foreground: 24 24% 11%;
-  --secondary: 29 18% 30%;
-  --secondary-foreground: 30 29% 98%;
+  --background: 30 35% 12%;
+  --foreground: 40 20% 92%;
+  --primary: 42 90% 60%;
+  --primary-foreground: 30 35% 12%;
+  --secondary: 30 25% 50%;
+  --secondary-foreground: 40 20% 92%;
+  --accent: 42 90% 60%;
+  --accent-foreground: 30 35% 12%;
+  --card: 30 30% 18%;
+  --card-foreground: 40 20% 92%;
+  --input: 30 35% 10%;
+  --border: 30 20% 30%;
+  --ring: 42 90% 60%;
+  --muted: 30 20% 30%;
+  --muted-foreground: 40 15% 70%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 30 22% 24%;
-  --muted-foreground: 35 23% 73%;
-  --accent: 46 65% 55%;
-  --accent-foreground: 24 24% 11%;
-  --card: 18 45% 6%;
-  --card-foreground: 30 29% 98%;
 
   /* Gold theme colors – brighter in dark mode */
-  --gold: 46 65% 55%;
-  --gold-light: 42 70% 73%;
-  --gold-dark: 41 66% 43%;
+  --gold: 42 90% 60%;
+  --gold-light: 42 90% 75%;
+  --gold-dark: 42 85% 45%;
 
   /* Radius – same as root */
   --radius: 0.75rem;

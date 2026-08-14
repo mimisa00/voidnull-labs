@@ -1,7 +1,7 @@
-import React from 'react';
+import React from 'react'
 
 interface DealerHandProps {
-  hand: string[];
+  hand: string[]
 }
 
 export const DealerHand: React.FC<DealerHandProps> = ({ hand }) => {
@@ -13,15 +13,15 @@ export const DealerHand: React.FC<DealerHandProps> = ({ hand }) => {
           hand.map((card, index) => (
             <div
               key={index}
-              className="bg-white border-2 border-gray-300 rounded-lg w-16 h-24 flex items-center justify-center text-xl font-bold shadow-md"
+              className="bg-card border-2 border-border rounded-lg w-16 h-24 flex items-center justify-center text-xl font-bold shadow-md text-card-foreground"
             >
               {card}
             </div>
           ))
         ) : (
-          <p className="text-gray-500">No cards dealt yet</p>
+          <p className="text-muted-foreground">No cards dealt yet</p>
         )}
       </div>
     </div>
-  );
-};
+  )
+}

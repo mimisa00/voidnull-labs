@@ -1,10 +1,16 @@
-"use client"
+'use client'
 
-import { useAuth } from '@/hooks/use-auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/use-auth'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user } = useAuth()
 
   return (
     <div>
@@ -17,7 +23,9 @@ export default function DashboardPage() {
             <CardDescription>Assigned roles and permissions</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-semibold">{user?.roles?.join(', ') || '-'}</p>
+            <p className="text-lg font-semibold">
+              {user?.roles?.join(', ') || '-'}
+            </p>
           </CardContent>
         </Card>
 
@@ -27,7 +35,9 @@ export default function DashboardPage() {
             <CardDescription>Granted permissions count</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-semibold">{user?.permissions?.length ?? 0} granted</p>
+            <p className="text-lg font-semibold">
+              {user?.permissions?.length ?? 0} granted
+            </p>
           </CardContent>
         </Card>
 
@@ -49,8 +59,20 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {['NestJS', 'Next.js 14', 'PostgreSQL', 'Redis', 'Socket.io', 'JWT+TOTP', 'Prisma', 'Turborepo'].map((t) => (
-              <span key={t} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm text-center hover:bg-gray-200 transition-colors">
+            {[
+              'NestJS',
+              'Next.js 14',
+              'PostgreSQL',
+              'Redis',
+              'Socket.io',
+              'JWT+TOTP',
+              'Prisma',
+              'Turborepo',
+            ].map((t) => (
+              <span
+                key={t}
+                className="bg-muted text-muted-foreground px-3 py-2 rounded-lg text-sm text-center hover:bg-accent/20 transition-colors"
+              >
                 {t}
               </span>
             ))}
@@ -58,5 +80,5 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
