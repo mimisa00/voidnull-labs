@@ -1,52 +1,60 @@
 /* apps/web/src/styles/theme.css */
 :root {
-  /* Base theme colors – these match the colors defined in tailwind.config.ts */
-  --border: #e5e7eb;
-  --input: #fff;
-  --ring: #3b82f6;
-  --background: #fafafa;
-  --foreground: #111827;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --secondary: #64748b;
-  --secondary-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --muted: #f5f5f5;
-  --muted-foreground: #6b7280;
-  --accent: #3b82f6;
-  --accent-foreground: #ffffff;
-  --card: #ffffff;
-  --card-foreground: #111827;
+  /* Base theme colors – simple elegant brown & gold theme */
+  --border: 30 22% 29%;
+  --input: 18 45% 11%;
+  --ring: 46 65% 52%;
+  --background: 27 45% 16%;
+  --foreground: 30 29% 95%;
+  --primary: 46 65% 52%;
+  --primary-foreground: 24 24% 8%;
+  --secondary: 29 18% 35%;
+  --secondary-foreground: 30 29% 95%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --muted: 30 22% 29%;
+  --muted-foreground: 35 23% 70%;
+  --accent: 46 65% 52%;
+  --accent-foreground: 24 24% 8%;
+  --card: 18 45% 11%;
+  --card-foreground: 30 29% 95%;
 
   /* Gold theme colors */
-  --gold: #D4AF37;
-  --gold-light: #E8C87B;
-  --gold-dark: #A97F23;
+  --gold: 46 65% 52%;
+  --gold-light: 42 70% 70%;
+  --gold-dark: 41 66% 40%;
 
   /* Radius (used in component borderRadius) */
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
-/* Dark mode overrides */
+/* Dark mode overrides – deeper, higher contrast version */
 .dark {
-  --border: #374151;
-  --input: #1f2937;
-  --ring: #3b82f6;
-  --background: #111827;
-  --foreground: #f9fafb;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #4b5563;
-  --secondary-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --muted: #1f2937;
-  --muted-foreground: #9ca3af;
-  --accent: #3b82f6;
-  --accent-foreground: #ffffff;
-  --card: #1f2937;
-  --card-foreground: #f9fafb;
+  --border: 30 22% 24%;
+  --input: 18 45% 6%;
+  --ring: 46 65% 55%;
+  --background: 27 45% 11%;
+  --foreground: 30 29% 98%;
+  --primary: 46 65% 55%;
+  --primary-foreground: 24 24% 11%;
+  --secondary: 29 18% 30%;
+  --secondary-foreground: 30 29% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --muted: 30 22% 24%;
+  --muted-foreground: 35 23% 73%;
+  --accent: 46 65% 55%;
+  --accent-foreground: 24 24% 11%;
+  --card: 18 45% 6%;
+  --card-foreground: 30 29% 98%;
+
+  /* Gold theme colors – brighter in dark mode */
+  --gold: 46 65% 55%;
+  --gold-light: 42 70% 73%;
+  --gold-dark: 41 66% 43%;
+
+  /* Radius – same as root */
+  --radius: 0.75rem;
 }
 
 @tailwind base;

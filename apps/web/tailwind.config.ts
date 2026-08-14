@@ -43,14 +43,14 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         // Gold theme colors
-        gold: '#D4AF37', // base golden color
-        goldLight: '#E8C87B', // light variant (optional)
-        goldDark: '#A97F23', // dark variant for dark mode
+        gold: 'hsl(var(--gold))',
+        goldLight: 'hsl(var(--gold-light))',
+        goldDark: 'hsl(var(--gold-dark))',
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: 'calc(var(--radius) + 0.25rem)',
+        md: 'var(--radius)',
+        sm: 'calc(var(--radius) - 0.25rem)',
       },
       keyframes: {
         'accordion-down': {
