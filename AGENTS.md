@@ -8,9 +8,19 @@ Single product: a NestJS API (`apps/api`) + Next.js 14 web app (`apps/web`). It 
 
 `npm` only (`package-lock.json` v3). No `packageManager`, no `engines`, no `.nvmrc` — the only Node signal is CI's `NODE_VERSION: '22'`.
 
+### Local development: npm vs. docker compose (choose one)
+
+**Recommended: docker compose** (`infra/docker/compose.dev.yml`). Starts all services (postgres, redis, api, web) with hot-reload via volume mounts. API and web containers run `npm run dev` internally; code changes in `apps/api/src` and `apps/web/src` are reflected instantly without rebuild or restart.
+
 | Task | Command |
 |---|---|
-| Dev (API only) | `npm run start:dev` |
+| Start all (docker) | `cd infra/docker && docker compose -f compose.dev.yml up -d` |
+| Service status (docker) | `docker compose -f compose.dev.yml ps` |
+| Logs (docker) | `docker compose -f compose.dev.yml logs -f api` (or `web`) |
+| Restart service (docker) | `docker compose -f compose.dev.yml restart api` (or `web`) — rarely needed due to watch mode |
+| Stop all (docker) | `docker compose -f compose.dev.yml down` |
+| Dev (API only, npm) | `npm run start:dev` |
+| Dev (web only, npm) | `cd apps/web && npm run dev` |
 | Build | `npm run build` (see trap) |
 | Lint | `npm run lint:check` (`npm run lint` auto-fixes) |
 | Format | `npm run format` |
@@ -20,7 +30,8 @@ Single product: a NestJS API (`apps/api`) + Next.js 14 web app (`apps/web`). It 
 
 Traps:
 
-- There is **no `npm run dev`**. `start:dev` starts the API only — web is started separately from `apps/web`.
+- **Do not mix docker compose and npm dev modes.** Both try to bind the same ports (api 3001, web 3000). If docker is already running, do **not** start `npm run start:dev` or `cd apps/web && npm run dev` — they will fail with port conflicts. Conversely, if you want to use npm locally, stop docker first: `docker compose -f compose.dev.yml down`.
+- There is **no `npm run dev`**. `start:dev` starts the API only — web must be started separately with `cd apps/web && npm run dev`.
 - DB scripts are prefixed `prisma:`, **not `db:`**. `db:generate` / `db:migrate` / `db:seed` do not exist at root.
 - `npm test`'s glob is broken on Windows (`Invalid testPattern ... Running all tests instead`) and silently falls back to the full suite; it happens to match `jest.config.js` `testMatch`, so it passes. Verified: 2 suites / 8 tests.
 - Do **not** use `npm test -- <file>` — the root script already carries its own broken glob argument. Use `npx jest <file>`.
@@ -37,6 +48,33 @@ Root `package.json` has **no `workspaces` field**; there is no `pnpm-workspace.y
 - `apps/web` — Next.js App Router + Tailwind + shadcn/ui.
 - `prisma/` (root) — authoritative schema + migrations. Prisma seed and code generation now run from root.
 - `infra/` — `docker/` (dev/staging/prod compose, certbot) and `nginx/` are **siblings**, not nested. `monitoring/` is at the **repo root**, not under `infra/` — a separate compose, not wired in.
+
+## Docker compose dev environment
+
+`infra/docker/compose.dev.yml` defines the local development stack:
+
+- **postgres** (port 5432): database, user `voidnull`
+- **redis** (port 6379): cache
+- **api** (port 3001): built from `Dockerfile.dev`, volume mounts `apps/api/src:ro` + `prisma:ro`, runs `npm run dev` internally
+- **web** (port 3000): built from `Dockerfile.dev`, volume mounts `apps/web/src:ro` + `apps/web/public`, runs `npm run dev` internally
+- **migrate** (one-shot): runs `prisma migrate deploy` on startup
+
+**Key fact**: API and web containers use volume mounts + watch mode. Editing `apps/api/src` or `apps/web/src` files on your machine is reflected instantly in the container and recompiled automatically — **no image rebuild or container restart needed**.
+
+### Service endpoints (docker compose)
+
+- Web: http://localhost:3000
+- API: http://localhost:3001/api
+- Swagger: http://localhost:3001/api/docs
+- Postgres: `localhost:5432` (user: `voidnull`)
+- Redis: `localhost:6379`
+
+### Test credentials
+
+These are seeded into the database by `prisma:seed`:
+
+- `admin@voidnull.io` / `Admin@123456` (admin role)
+- `user@voidnull.io` / `User@123456` (user role)
 
 ## Prisma / schema conflict — READ FIRST
 
