@@ -94,8 +94,8 @@ packages/common/
 - `git commit` 必須以「feat: / fix: / docs:」開頭，簡要說明。
 
 ## 🔑 主要參考
-- `design/architecture_spec.md`（此檔案）  
-- `@docs/code-standards.md`（伴隨文件）  
+- `docs/guideline/architecture_spec.md`（此檔案）  
+- `@docs/guideline/code-standards.md`（伴隨文件）  
 - `apps/api/**/*.ts`、`apps/web/**/*.tsx`、`packages/common/**/*.ts`
 
 > **備註**  

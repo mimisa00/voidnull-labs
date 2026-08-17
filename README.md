@@ -35,7 +35,10 @@ voidnull/
 ├── monitoring/       # Prometheus + Grafana + ELK
 ├── .github/          # GitHub Actions CI/CD
 ├── .gitlab-ci.yml    # GitLab CI/CD
-└── docs/
+├── docs/guideline/
+│   ├── architecture_spec.md
+│   └── code-standards.md
+└── docs/ops/
     └── ops-manual.md # Operations manual (中文)
 ```
 
@@ -236,4 +239,4 @@ docker compose -f infra/docker/compose.__env__.yml logs -f postgres
 docker compose -f infra/docker/compose.__env__.yml logs -f api web   # multiple
 ```
 
-For production log queries, alerting setup, and incident playbooks see [docs/ops-manual.md](docs/ops-manual.md).
+For production log queries, alerting setup, and incident playbooks see [docs/ops/ops-manual.md](docs/ops/ops-manual.md).

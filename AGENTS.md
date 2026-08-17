@@ -2,7 +2,7 @@
 
 Single product: a NestJS API (`apps/api`) + Next.js 14 web app (`apps/web`). It is **not** a lab/experiments repo and **not** a working monorepo.
 
-**The prose docs in this repo frequently contradict reality.** README, `design/architecture_spec.md`, and parts of `docs/code-standards.md` describe tooling that isn't installed and rules that aren't enforced. Trust, in this order: executable source > `package.json` scripts / config files > docs. When a doc conflicts with a config, follow the config and say so rather than "fixing" the code to match the doc.
+**The prose docs in this repo frequently contradict reality.** README, `docs/guideline/architecture_spec.md`, and parts of `docs/guideline/code-standards.md` describe tooling that isn't installed and rules that aren't enforced. Trust, in this order: executable source > `package.json` scripts / config files > docs. When a doc conflicts with a config, follow the config and say so rather than "fixing" the code to match the doc.
 
 ## Commands
 
@@ -99,15 +99,17 @@ CI and docker compose now run `prisma migrate deploy` and `prisma generate` from
 ## Conventions for new code
 
 - **`.prettierrc` sets `semi: false` — no semicolons**, single quotes, trailing commas, 2 spaces. This contradicts typical NestJS style and is the single most common thing agents get wrong here.
-- `eslint.config.js` is flat config with **`rules: {}` — completely empty**. ESLint parses but enforces nothing. `eslint-plugin-boundaries`, `eslint-config-prettier`, `eslint-plugin-prettier`, and `typescript-eslint` are installed but referenced by nothing. The import-boundary layering that `docs/code-standards.md` claims is enforced is **not** enforced — a clean lint run proves nothing about style.
-- TypeScript: no root tsconfig, no project references. `apps/api/tsconfig.json` has `strictNullChecks: true` but **`noImplicitAny: false`**, `strictBindCallApply: false`, alias `@/*` → `src/*`. `apps/web/tsconfig.json` is full `strict: true`, `moduleResolution: bundler`, alias `@/*` → `./src/*`. `design/architecture_spec.md` demands `strict`/`noImplicitAny` everywhere — the actual tsconfig wins.
+- `eslint.config.js` is flat config with **`rules: {}` — completely empty**. ESLint parses but enforces nothing. `eslint-plugin-boundaries`, `eslint-config-prettier`, `eslint-plugin-prettier`, and `typescript-eslint` are installed but referenced by nothing. The import-boundary layering that `docs/guideline/code-standards.md` claims is enforced is **not** enforced — a clean lint run proves nothing about style.
+- TypeScript: no root tsconfig, no project references. `apps/api/tsconfig.json` has `strictNullChecks: true` but **`noImplicitAny: false`**, `strictBindCallApply: false`, alias `@/*` → `src/*`. `apps/web/tsconfig.json` is full `strict: true`, `moduleResolution: bundler`, alias `@/*` → `./src/*`. `docs/guideline/architecture_spec.md` demands `strict`/`noImplicitAny` everywhere — the actual tsconfig wins.
 - API feature layout: `<feature>/<feature>.module.ts` + `.controller.ts` + `.service.ts`, DTOs in `<feature>/dto/`, guards in `<feature>/guards/`, decorators in `<feature>/decorators/`. auth/users/rbac follow this; `game/` is the exception (flat `game.dto.ts`) — follow auth/users/rbac.
 - Controllers: `@ApiTags` + `@ApiBearerAuth()` + class-level `@UseGuards(JwtAuthGuard, PermissionsGuard)` + method-level `@Permissions('resource:action')`. Permission strings are always lowercase `resource:action`.
 - Services throw built-in Nest HTTP exceptions (`NotFoundException`, `UnauthorizedException`, `ConflictException`, `ForbiddenException`, `BadRequestException`). There are **no** custom exception classes and no global exception filter — don't introduce one unasked. Update/delete methods call `await this.findOne(id)` first to trigger the 404.
 - Constructor DI is written `private xxx: Service` (not `readonly`).
 - Web: `"use client"` at the top of client components. `components/ui/` is shadcn-generated (`components.json` present) — put custom components in `components/`.
-- Naming (from `docs/code-standards.md`, still valid): PascalCase classes, UPPER_SNAKE_CASE constants, camelCase vars/functions, kebab-case filenames.
+- Naming (from `docs/guideline/code-standards.md`, still valid): PascalCase classes, UPPER_SNAKE_CASE constants, camelCase vars/functions, kebab-case filenames.
 - **`console.log` is not the logging convention.** Leftover debug logs sit on production paths (`auth.service.ts` logs the whole user object, `auth.controller.ts` logs the login body, the login page logs `'Button clicked'`). That's tech debt. NestJS `Logger` is used only in `app.gateway.ts`.
+
+
 
 ## Testing
 
@@ -137,6 +139,6 @@ CI and docker compose now run `prisma migrate deploy` and `prisma generate` from
 - **ESLint enforces nothing** (empty `rules: {}`).
 - **`turbo.json` is dead config** (turbo not installed).
 - Stale/iteration leftovers, not canonical: `apps/api/test_login.js`, `cypress/`.
-- `@docs/` is an empty directory. References to `@docs/code-standards.md` mean `docs/code-standards.md`.
-- `design/architecture_spec.md` is mojibake-corrupted (UTF-8/Big5 mix) and partly unreadable — don't quote it as a spec.
+- `@docs/` is an empty directory. References to `@docs/guideline/code-standards.md` mean `docs/guideline/code-standards.md`.
+- `docs/guideline/architecture_spec.md` is mojibake-corrupted (UTF-8/Big5 mix) and partly unreadable — don't quote it as a spec.
 - Artifacts: `.playwright-mcp/`, `.qa-artifacts/`, `test-results/`. **`test-results/` is currently untracked and not gitignored** — don't commit it.
