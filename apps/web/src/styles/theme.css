@@ -23,6 +23,10 @@
   --header: 42 85% 55%;
   --header-foreground: 30 30% 15%;
 
+  /* Header glass colors – neutral grayscale frosted glass */
+  --header-glass: 0 0% 100%;
+  --header-glass-foreground: 30 30% 15%;
+
   /* Gold theme colors */
   --gold: 42 85% 55%;
   --gold-light: 42 85% 70%;
@@ -55,6 +59,10 @@
   /* Header colors – dark mode uses deep coffee brown background */
   --header: 30 30% 18%;
   --header-foreground: 40 20% 92%;
+
+  /* Header glass colors – neutral grayscale frosted glass */
+  --header-glass: 30 30% 18%;
+  --header-glass-foreground: 40 20% 92%;
 
   /* Gold theme colors – brighter in dark mode */
   --gold: 42 90% 60%;

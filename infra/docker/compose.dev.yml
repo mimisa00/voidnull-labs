@@ -74,6 +74,9 @@ services:
     volumes:
       - ../../apps/web/src:/app/apps/web/src:ro
       - ../../apps/web/public:/app/public
+      - ../../apps/web/tailwind.config.ts:/app/apps/web/tailwind.config.ts:ro
+      - ../../apps/web/postcss.config.js:/app/apps/web/postcss.config.js:ro
+      - ../../apps/web/next.config.mjs:/app/apps/web/next.config.mjs:ro
 
   # ── DB Migration on startup ─────────────────────────────────────────────────
   migrate:

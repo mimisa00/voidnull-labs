@@ -179,7 +179,7 @@ export default function NavBar() {
         {user && hasPermission('operations:read') && (
           <Link
             href="/operations/dashboard"
-            className="text-header-foreground font-semibold hover:opacity-80 transition-opacity"
+            className="text-header-glass-foreground font-semibold hover:opacity-80 transition-opacity"
           >
             Operations
           </Link>
@@ -187,7 +187,7 @@ export default function NavBar() {
         {user && hasPermission('client:read') && (
           <Link
             href="/client/home"
-            className="text-header-foreground font-semibold hover:opacity-80 transition-opacity"
+            className="text-header-glass-foreground font-semibold hover:opacity-80 transition-opacity"
           >
             Client
           </Link>
@@ -195,7 +195,7 @@ export default function NavBar() {
         {user && hasPermission('games:read') && (
           <Link
             href="/games/lobby"
-            className="text-header-foreground font-semibold hover:opacity-80 transition-opacity"
+            className="text-header-glass-foreground font-semibold hover:opacity-80 transition-opacity"
           >
             Games
           </Link>
@@ -211,7 +211,10 @@ export default function NavBar() {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuRadioGroup value={choice} onValueChange={handleThemeChange}>
+          <DropdownMenuRadioGroup
+            value={choice}
+            onValueChange={handleThemeChange}
+          >
             <DropdownMenuRadioItem value="light">
               <Sun className="w-4 h-4 mr-2" />
               Light
@@ -235,7 +238,11 @@ export default function NavBar() {
     return (
       <nav
         ref={navRef}
-        className={`fixed top-0 left-0 right-0 z-50 bg-header border-b border-border px-4 rounded-b-xl shadow-md transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`fixed top-0 left-0 right-0 z-50 ${
+          isExpanded
+            ? 'bg-header-glass/75 backdrop-blur-lg'
+            : 'bg-header-glass/50 backdrop-blur-sm'
+        } border-b border-border px-4 rounded-b-xl shadow-md transition-all duration-300 ease-in-out overflow-hidden ${
           isExpanded ? 'max-h-[100px]' : 'max-h-[4px]'
         }`}
         onMouseEnter={handleMouseEnter}
@@ -259,7 +266,10 @@ export default function NavBar() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup value={choice} onValueChange={handleThemeChange}>
+              <DropdownMenuRadioGroup
+                value={choice}
+                onValueChange={handleThemeChange}
+              >
                 <DropdownMenuRadioItem value="light">
                   <Sun className="w-4 h-4 mr-2" />
                   Light
@@ -283,7 +293,11 @@ export default function NavBar() {
   return (
     <nav
       ref={navRef}
-      className={`fixed top-0 left-0 right-0 z-50 bg-header border-b border-border px-4 rounded-b-xl shadow-md transition-all duration-300 ease-in-out overflow-hidden ${
+      className={`fixed top-0 left-0 right-0 z-50 ${
+        isExpanded
+          ? 'bg-header-glass/75 backdrop-blur-lg'
+          : 'bg-header-glass/50 backdrop-blur-sm'
+      } border-b border-border px-4 rounded-b-xl shadow-md transition-all duration-300 ease-in-out overflow-hidden ${
         isExpanded ? 'max-h-[100px]' : 'max-h-[4px]'
       }`}
       onMouseEnter={handleMouseEnter}
@@ -295,9 +309,7 @@ export default function NavBar() {
       onBlur={handleBlur}
       aria-expanded={isExpanded}
     >
-      <div className="py-3 flex justify-between items-center">
-        {navContent}
-      </div>
+      <div className="py-3 flex justify-between items-center">{navContent}</div>
     </nav>
   )
 }

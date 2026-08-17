@@ -1,4 +1,3 @@
-'use client'
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
@@ -45,6 +44,10 @@ const config: Config = {
         header: {
           DEFAULT: 'hsl(var(--header))',
           foreground: 'hsl(var(--header-foreground))',
+        },
+        'header-glass': {
+          DEFAULT: 'hsl(var(--header-glass))',
+          foreground: 'hsl(var(--header-glass-foreground))',
         },
         // Gold theme colors
         gold: 'hsl(var(--gold))',
