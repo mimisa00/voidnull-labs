@@ -21,8 +21,11 @@ model User {
   updatedAt           DateTime  @updatedAt
   refreshTokens       RefreshToken[]
   playerGames         PlayerGame[]
-  gameHistories       GameHistory[] // Added reverse relation field
+  gameHistories       GameHistory[]
   agentPerformances   AgentPerformance[]
+  wallet              Wallet?
+  tournamentParticipants TournamentParticipant[] @relation("UserTournamentParticipants")
+  tournamentResults   TournamentResult[] @relation("UserTournamentResults")
 }
 
 model Role {
@@ -76,6 +79,7 @@ model Game {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   gameHistory  GameHistory[]
+  transactions Transaction[]
 }
 
 model PlayerGame {
@@ -152,4 +156,71 @@ model AgentPerformance {
 
   @@unique([agentId, period])
   @@index([period])
+}
+
+model Wallet {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balance       Decimal  @db.Decimal(18, 2)
+  currency      String   @default("USD")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  @@index([userId])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  walletId      String
+  type          String
+  amount        Decimal  @db.Decimal(18, 2)
+  balanceBefore Decimal  @db.Decimal(18, 2)
+  balanceAfter  Decimal  @db.Decimal(18, 2)
+  gameId        String?
+  description   String?
+  createdAt     DateTime @default(now())
+  wallet        Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  game          Game?    @relation(fields: [gameId], references: [id])
+  @@index([walletId])
+  @@index([gameId])
+  @@index([createdAt])
+}
+
+model Tournament {
+  id           String   @id @default(cuid())
+  name         String
+  status       String
+  startTime    DateTime
+  endTime      DateTime
+  maxPlayers   Int
+  entryFee     Int
+  prizePool    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  participants TournamentParticipant[]
+  results      TournamentResult[]
+}
+
+model TournamentParticipant {
+  id           String     @id @default(cuid())
+  tournamentId String
+  userId       String
+  entryTime    DateTime   @default(now())
+  status       String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User       @relation("UserTournamentParticipants", fields: [userId], references: [id])
+  @@unique([tournamentId, userId])
+}
+
+model TournamentResult {
+  id           String     @id @default(cuid())
+  tournamentId String
+  userId       String
+  rank         Int
+  finalBalance Decimal    @db.Decimal(18, 2)
+  prize        Decimal    @db.Decimal(18, 2)
+  createdAt    DateTime   @default(now())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User       @relation("UserTournamentResults", fields: [userId], references: [id])
 }

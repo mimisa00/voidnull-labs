@@ -11,6 +11,7 @@ import { GatewayModule } from './gateway/gateway.module'
 import { GameModule } from './game/game.module'
 import { ReportsModule } from './reports/reports.module'
 import { ApprovalModule } from './approval/approval.module'
+import { WalletModule } from './wallet/wallet.module'
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ApprovalModule } from './approval/approval.module'
     GameModule,
     ReportsModule,
     ApprovalModule,
+    WalletModule,
   ],
 })
 export class AppModule {}
