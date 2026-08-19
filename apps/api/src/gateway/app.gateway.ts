@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common'
 import { Server, Socket } from 'socket.io'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
-// import { GameService } from '../game/game.service';
+import { GameService } from '../game/game.service'
 
 @WebSocketGateway({
   cors: { origin: '*', credentials: true },
@@ -27,7 +27,7 @@ export class AppGateway
   constructor(
     private jwtService: JwtService,
     private config: ConfigService,
-    // private gameService: GameService,
+    private gameService: GameService,
   ) {}
 
   afterInit() {
@@ -96,32 +96,85 @@ export class AppGateway
     @MessageBody()
     data: { gameType: string; maxPlayers: number; buyIn: number },
   ) {
-    this.logger.warn('Game service removed')
-    return { success: false, error: 'Game service not available' }
+    if (!client.data.user?.permissions?.includes('games:create')) {
+      return {
+        success: false,
+        error: 'Forbidden: missing permission games:create',
+      }
+    }
+    try {
+      const game = await this.gameService.create({
+        type: data.gameType,
+        maxPlayers: data.maxPlayers,
+        buyIn: data.buyIn,
+      })
+      client.join(`game:${game.id}`)
+      this.server.emit('game:created', { gameId: game.id, ...game })
+      return { success: true, ...game }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
   }
 
   @SubscribeMessage('game:join')
   async handleJoinGame(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { gameId: string; playerId: string },
+    @MessageBody() data: { gameId: string; playerId?: string },
   ) {
-    this.logger.warn('Game service removed')
-    return { success: false, error: 'Game service not available' }
+    if (!client.data.user?.permissions?.includes('games:join')) {
+      return {
+        success: false,
+        error: 'Forbidden: missing permission games:join',
+      }
+    }
+    const userId = client.data.user.sub
+    try {
+      const result = await this.gameService.joinGame(data.gameId, userId)
+      client.join(`game:${data.gameId}`)
+      client.emit('game:joined', {
+        gameId: data.gameId,
+        playerPosition: result.position,
+      })
+      this.server.to(`game:${data.gameId}`).emit('game:updated', {
+        gameId: data.gameId,
+        status: result.gameState.status,
+        players: [],
+      })
+      return { ...result, success: true }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
   }
 
   @SubscribeMessage('game:action')
   async handleGameAction(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    data: {
-      gameId: string
-      action: string
-      playerId: string
-      data?: object
-    },
+    data: { gameId: string; action: string; betAmount?: number },
   ) {
-    this.logger.warn('Game service removed')
-    return { success: false, error: 'Game service not available' }
+    if (!client.data.user?.permissions?.includes('games:play')) {
+      return {
+        success: false,
+        error: 'Forbidden: missing permission games:play',
+      }
+    }
+    const userId = client.data.user.sub
+    try {
+      const result = await this.gameService.handleAction(
+        data.gameId,
+        userId,
+        data.action,
+        data.betAmount,
+      )
+      this.server.to(`game:${data.gameId}`).emit('game:updated', {
+        gameId: data.gameId,
+        status: result.gameState.status,
+        players: [],
+      })
+      return { ...result, success: true }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
   }
 
   // Server-side emit methods (called by other services)

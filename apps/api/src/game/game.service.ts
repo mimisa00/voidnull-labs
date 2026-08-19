@@ -1,10 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
+import { RedisService } from '../redis/redis.service'
+import { WalletService } from '../wallet/wallet.service'
+import { Deck, Card } from './engines/card-deck'
+import { BlackjackEngine } from './engines/blackjack.engine'
+import { GameStateMachine } from './game-state-machine'
+import {
+  GameState,
+  GameResult,
+  PlayerState,
+  GameAction,
+} from './interfaces/game-state.interface'
 import { CreateGameDto, UpdateGameDto } from './game.dto'
 
 @Injectable()
 export class GameService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(GameService.name)
+  private gameActionQueues = new Map<string, Promise<any>>()
+
+  constructor(
+    private prisma: PrismaService,
+    private wallet: WalletService,
+    private redis: RedisService,
+  ) {}
 
   findAll() {
     return this.prisma.game.findMany({
@@ -41,5 +66,369 @@ export class GameService {
     await this.findOne(id)
     await this.prisma.game.delete({ where: { id } })
     return { message: 'Game deleted' }
+  }
+
+  async joinGame(gameId: string, userId: string) {
+    const queueKey = `join:${gameId}`
+    const task = (
+      this.gameActionQueues.get(queueKey) ?? Promise.resolve()
+    ).then(() => this._joinGameInternal(gameId, userId))
+    this.gameActionQueues.set(
+      queueKey,
+      task.catch(() => undefined),
+    )
+    return task.finally(() => {
+      this.gameActionQueues.delete(queueKey)
+    })
+  }
+
+  private async _joinGameInternal(gameId: string, userId: string) {
+    const game = await this.prisma.game.findUnique({ where: { id: gameId } })
+    if (!game || game.status !== 'waiting') {
+      throw new BadRequestException(`Game ${gameId} is not in waiting status`)
+    }
+
+    const playerCount = await this.prisma.playerGame.count({
+      where: { gameId },
+    })
+    if (playerCount >= game.maxPlayers) {
+      throw new BadRequestException(`Game ${gameId} is full`)
+    }
+
+    const existingPlayer = await this.prisma.playerGame.findFirst({
+      where: { gameId, playerId: userId },
+    })
+    if (existingPlayer) {
+      throw new ConflictException(
+        `User ${userId} has already joined game ${gameId}`,
+      )
+    }
+
+    const updatedWallet = await this.wallet.placeBet(userId, gameId, game.buyIn)
+
+    const position = playerCount
+    await this.prisma.playerGame.create({
+      data: {
+        playerId: userId,
+        gameId,
+        balance: updatedWallet.balance.toNumber(),
+        hand: [],
+        status: 'playing',
+        position,
+      },
+    })
+
+    if (playerCount + 1 >= game.maxPlayers) {
+      await this.startGame(gameId)
+    }
+
+    const gameState = await this.getGameState(gameId)
+    return { success: true, position, gameState }
+  }
+
+  private async startGame(gameId: string) {
+    const result = await this.prisma.game.updateMany({
+      where: { id: gameId, status: 'waiting' },
+      data: { status: 'playing', updatedAt: new Date() },
+    })
+    if (result.count === 0) {
+      this.logger.warn(
+        `Game ${gameId} was already started by another request, skipping deal`,
+      )
+      return
+    }
+
+    const game = await this.prisma.game.findUnique({ where: { id: gameId } })
+    if (!game) {
+      this.logger.warn(
+        `Game ${gameId} not found after status transition, skipping deal`,
+      )
+      return
+    }
+
+    const playerGames = await this.prisma.playerGame.findMany({
+      where: { gameId },
+      orderBy: { position: 'asc' },
+    })
+
+    const deck = new Deck(1)
+    const players: PlayerState[] = []
+    for (const playerGame of playerGames) {
+      const hand: Card[] = [deck.drawCard(), deck.drawCard()]
+      await this.prisma.playerGame.update({
+        where: { id: playerGame.id },
+        data: {
+          hand: hand as unknown as Prisma.InputJsonValue,
+          status: 'playing',
+        },
+      })
+      players.push({
+        id: playerGame.id,
+        userId: playerGame.playerId,
+        hand,
+        status: 'playing',
+        bet: game.buyIn,
+        balance: playerGame.balance,
+        position: playerGame.position,
+      })
+    }
+    const dealerHand: Card[] = [deck.drawCard(), deck.drawCard()]
+
+    const gameState: GameState = {
+      id: gameId,
+      status: 'playing',
+      players,
+      dealerHand,
+      pot: players.reduce((sum, player) => sum + player.bet, 0),
+      currentPlayerIndex: 0,
+      deckCards: deck.getRemainingCards(),
+    }
+    await this.setGameState(gameId, gameState)
+  }
+
+  async handleAction(
+    gameId: string,
+    userId: string,
+    action: string,
+    betAmount?: number,
+  ) {
+    const queueKey = gameId
+    const task = (
+      this.gameActionQueues.get(queueKey) ?? Promise.resolve()
+    ).then(() => this._handleActionInternal(gameId, userId, action, betAmount))
+    this.gameActionQueues.set(
+      queueKey,
+      task.catch(() => undefined),
+    )
+    return task.finally(() => {
+      this.gameActionQueues.delete(queueKey)
+    })
+  }
+
+  private async _handleActionInternal(
+    gameId: string,
+    userId: string,
+    action: string,
+    betAmount?: number,
+  ) {
+    const gameState = await this.getGameState(gameId)
+    const stateMachine = new GameStateMachine()
+
+    if (!stateMachine.isValidAction(gameState, userId, action as GameAction)) {
+      throw new BadRequestException(
+        `Invalid action '${action}' for user ${userId} in game ${gameId}`,
+      )
+    }
+
+    if (action === 'double') {
+      const player = gameState.players.find((p) => p.userId === userId)
+      await this.wallet.placeBet(userId, gameId, player.bet)
+    }
+
+    let drawnCard: Card | undefined
+    if (action === 'hit' || action === 'double') {
+      let deck: Deck
+      if (gameState.deckCards.length >= 10) {
+        deck = Deck.fromCards(gameState.deckCards)
+      } else {
+        this.logger.warn(
+          `Game ${gameId}: only ${gameState.deckCards.length} cards left in deck, reshuffling a new deck`,
+        )
+        deck = new Deck(1)
+      }
+      drawnCard = deck.drawCard()
+      gameState.deckCards = deck.getRemainingCards()
+    }
+
+    const newState = stateMachine.processAction(
+      gameState,
+      userId,
+      action as GameAction,
+      drawnCard,
+    )
+
+    if (newState.status === 'dealer-turn') {
+      const finalState = await this.handleDealerTurn(gameId, newState)
+      return { success: true, gameState: finalState }
+    }
+
+    await this.setGameState(gameId, newState)
+    return { success: true, gameState: newState }
+  }
+
+  private async handleDealerTurn(
+    gameId: string,
+    gameState: GameState,
+  ): Promise<GameState> {
+    const blackjackEngine = new BlackjackEngine()
+
+    while (blackjackEngine.shouldDealerHit({ cards: gameState.dealerHand })) {
+      let deck: Deck
+      if (gameState.deckCards.length >= 10) {
+        deck = Deck.fromCards(gameState.deckCards)
+      } else {
+        this.logger.warn(
+          `Game ${gameId}: only ${gameState.deckCards.length} cards left in deck during dealer turn, reshuffling a new deck`,
+        )
+        deck = new Deck(1)
+      }
+      const card = deck.drawCard()
+      gameState.dealerHand.push(card)
+      gameState.deckCards = deck.getRemainingCards()
+    }
+
+    const results: GameResult[] = gameState.players.map((player) => {
+      const playerHand = { cards: player.hand }
+      const dealerHand = { cards: gameState.dealerHand }
+      const outcome = blackjackEngine.determineWinner(playerHand, dealerHand)
+      if (outcome === 'push') {
+        return {
+          userId: player.userId,
+          result: 'push' as const,
+          payout: player.bet,
+        }
+      }
+      if (outcome === 'player') {
+        const isBlackjack = blackjackEngine.evaluateHand(playerHand).isBlackjack
+        const payout = isBlackjack ? Math.floor(player.bet * 1.5) : player.bet
+        return { userId: player.userId, result: 'win' as const, payout }
+      }
+      return { userId: player.userId, result: 'loss' as const, payout: 0 }
+    })
+
+    for (const player of gameState.players) {
+      player.status = 'completed'
+    }
+    gameState.status = 'completed'
+    gameState.results = results
+
+    const canSettle = await this.persistGameResult(gameId, gameState)
+    if (!canSettle) {
+      this.logger.warn(
+        `Game ${gameId} was already settled by another process, skipping payout`,
+      )
+      return gameState
+    }
+
+    try {
+      await this.wallet.payoutGameResults(
+        gameId,
+        results.map((r) => ({
+          playerId: r.userId,
+          result: r.result,
+          payout: r.payout,
+        })),
+      )
+    } catch (err) {
+      this.logger.error(
+        'CRITICAL: payout failed, manual reconciliation needed',
+        err,
+      )
+      throw err
+    }
+
+    try {
+      await this.redis.del(`game:${gameId}:state`)
+    } catch (err) {
+      this.logger.warn(
+        `Failed to delete game state cache for game ${gameId}: ${err}`,
+      )
+    }
+
+    return gameState
+  }
+
+  private async persistGameResult(
+    gameId: string,
+    gameState: GameState,
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const updateResult = await tx.game.updateMany({
+        where: { id: gameId, status: { not: 'completed' } },
+        data: { status: 'completed', updatedAt: new Date() },
+      })
+      if (updateResult.count === 0) {
+        return false
+      }
+
+      const results = gameState.results ?? []
+      for (const player of gameState.players) {
+        const result = results.find((r) => r.userId === player.userId)
+        await tx.playerGame.update({
+          where: { id: player.id },
+          data: {
+            hand: player.hand as unknown as Prisma.InputJsonValue,
+            status: 'completed',
+            balance: player.balance,
+          },
+        })
+        await tx.gameHistory.create({
+          data: {
+            gameId,
+            winnerId: result?.result === 'win' ? player.userId : null,
+            payout: result?.payout ?? 0,
+            timestamp: new Date(),
+          },
+        })
+      }
+      return true
+    })
+  }
+
+  private async getGameState(gameId: string): Promise<GameState> {
+    try {
+      const cached = await this.redis.get(`game:${gameId}:state`)
+      if (cached) {
+        return JSON.parse(cached) as GameState
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Failed to read game state cache for game ${gameId}: ${err}`,
+      )
+    }
+
+    this.logger.warn(
+      `No cached game state for game ${gameId}, rebuilding from database (deckCards is empty, next draw will reshuffle)`,
+    )
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { players: true },
+    })
+    if (!game) {
+      throw new NotFoundException(`Game ${gameId} not found`)
+    }
+
+    const players: PlayerState[] = game.players
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((playerGame) => ({
+        id: playerGame.id,
+        userId: playerGame.playerId,
+        hand: (playerGame.hand as unknown as Card[]) ?? [],
+        status: playerGame.status as PlayerState['status'],
+        bet: game.buyIn,
+        balance: playerGame.balance,
+        position: playerGame.position,
+      }))
+
+    return {
+      id: gameId,
+      status: game.status as GameState['status'],
+      players,
+      dealerHand: [],
+      pot: game.pot,
+      currentPlayerIndex: 0,
+      deckCards: [],
+    }
+  }
+
+  private async setGameState(gameId: string, state: GameState): Promise<void> {
+    try {
+      await this.redis.set(`game:${gameId}:state`, JSON.stringify(state), 7200)
+    } catch (err) {
+      this.logger.warn(
+        `Failed to write game state cache for game ${gameId}: ${err}`,
+      )
+    }
   }
 }

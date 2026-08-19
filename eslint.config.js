@@ -5,8 +5,10 @@ const tsPlugin = require('@typescript-eslint/eslint-plugin');
 
 module.exports = [
   {
+    ignores: ['dist/**/*', '.qa-artifacts/**/*', '.playwright-mcp/**/*', 'test-results/**/*'],
+  },
+  {
     files: ['**/*.{ts,tsx,js}'],
-    ignores: ['dist/**/*'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

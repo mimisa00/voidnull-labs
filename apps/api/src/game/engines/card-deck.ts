@@ -79,4 +79,14 @@ export class Deck {
   cardsRemaining(): number {
     return this.cards.length
   }
+
+  getRemainingCards(): Card[] {
+    return [...this.cards]
+  }
+
+  static fromCards(cards: Card[]): Deck {
+    const deck = new Deck(0)
+    deck.cards = [...cards]
+    return deck
+  }
 }
