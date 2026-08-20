@@ -13,6 +13,12 @@ import { Server, Socket } from 'socket.io'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import { GameService } from '../game/game.service'
+import {
+  BroadcastState,
+  GameState,
+} from '../game/interfaces/game-state.interface'
+
+type GameUpdatedPayload = { gameId: string; state: BroadcastState }
 
 @WebSocketGateway({
   cors: { origin: '*', credentials: true },
@@ -135,12 +141,10 @@ export class AppGateway
         gameId: data.gameId,
         playerPosition: result.position,
       })
-      this.server.to(`game:${data.gameId}`).emit('game:updated', {
-        gameId: data.gameId,
-        status: result.gameState.status,
-        players: [],
-      })
-      return { ...result, success: true }
+      // 廣播與 ack 都用已遮蔽的 BroadcastState; state 來自 in-memory result,
+      // 不把 raw GameState(deckCards + 暗牌)外洩
+      const state = await this.broadcastGameState(data.gameId, result.gameState)
+      return { success: true, gameId: data.gameId, state }
     } catch (err) {
       return { success: false, error: err.message }
     }
@@ -166,15 +170,46 @@ export class AppGateway
         data.action,
         data.betAmount,
       )
-      this.server.to(`game:${data.gameId}`).emit('game:updated', {
-        gameId: data.gameId,
-        status: result.gameState.status,
-        players: [],
-      })
-      return { ...result, success: true }
+      // 廣播與 ack 都用已遮蔽的 BroadcastState; state 來自 in-memory result,
+      // 讓結算後(Redis 已清)的最終一筆廣播仍帶完整 dealerHand + results
+      const state = await this.broadcastGameState(data.gameId, result.gameState)
+      return { success: true, gameId: data.gameId, state }
     } catch (err) {
       return { success: false, error: err.message }
     }
+  }
+
+  /**
+   * 廣播已遮蔽的 BroadcastState 給整桌, 回傳實際廣播的 state(供 ack 使用)。
+   * sourceState 是 action/join 回傳的 in-memory GameState —— 不從 Redis 重建,
+   * 避免結算瞬間 cache 已清、DB 沒有 dealerHand/results 的壞廣播。
+   * 失敗時只記錄、不回傳 null(動作本身已提交, ack 仍 success)。
+   */
+  private async broadcastGameState(
+    gameId: string,
+    sourceState: GameState,
+  ): Promise<BroadcastState | null> {
+    let state: BroadcastState | null
+    try {
+      state = await this.gameService.getBroadcastState(gameId, sourceState)
+    } catch (err) {
+      this.logger.warn(
+        `Failed to build broadcast state for game ${gameId}: ${err}`,
+      )
+      return null
+    }
+    if (!state) {
+      this.logger.warn(
+        `Game ${gameId} no longer exists, skipping state broadcast`,
+      )
+      return null
+    }
+    const payload: GameUpdatedPayload = { gameId, state }
+    this.server.to(`game:${gameId}`).emit('game:updated', payload)
+    if (state.status === 'completed') {
+      this.server.to(`game:${gameId}`).emit('game:ended', payload)
+    }
+    return state
   }
 
   // Server-side emit methods (called by other services)

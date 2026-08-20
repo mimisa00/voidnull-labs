@@ -189,6 +189,30 @@ async function main() {
     })
   }
 
+  // Create wallets for the seeded users so game betting/payout flows don't 404.
+  // upsert with empty update: re-runs keep the existing balance (no reset).
+  const initialWalletBalance = 1000
+
+  await prisma.wallet.upsert({
+    where: { userId: adminUser.id },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      balance: initialWalletBalance,
+      currency: 'USD',
+    },
+  })
+
+  await prisma.wallet.upsert({
+    where: { userId: regularUser.id },
+    update: {},
+    create: {
+      userId: regularUser.id,
+      balance: initialWalletBalance,
+      currency: 'USD',
+    },
+  })
+
   console.log('Database seeded successfully')
 }
 

@@ -101,3 +101,9 @@ export const rolesApi = {
 export const permissionsApi = {
   list: () => api.get('/permissions').then((r) => r.data),
 }
+
+export const gamesApi = {
+  getGames: (params?: Record<string, any>) =>
+    api.get('/games', { params }).then((r) => r.data),
+  getGame: (id: string) => api.get(`/games/${id}`).then((r) => r.data),
+}

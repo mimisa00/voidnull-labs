@@ -2,7 +2,7 @@ import { GameState } from './interfaces/game-state.interface'
 import { BlackjackEngine } from './engines/blackjack.engine'
 import { Card } from './engines/card-deck'
 
-export type GameAction = 'hit' | 'stand' | 'double' | 'split'
+export type GameAction = 'hit' | 'stand' | 'double'
 
 export class GameStateMachine {
   private blackjackEngine = new BlackjackEngine()
@@ -35,7 +35,7 @@ export class GameStateMachine {
     }
 
     // 檢查 action 的合法性
-    if (!['hit', 'stand', 'double', 'split'].includes(action)) {
+    if (!['hit', 'stand', 'double'].includes(action)) {
       return false
     }
 
@@ -87,10 +87,6 @@ export class GameStateMachine {
             player.status = 'stand'
           }
         }
-        break
-
-      case 'split':
-        // 簡化實現：暫不支援 split
         break
     }
 

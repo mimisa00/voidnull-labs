@@ -135,4 +135,126 @@ describe('GameService', () => {
       expect(redisMock.set).toHaveBeenCalled()
     })
   })
+
+  describe('getBroadcastState', () => {
+    const createBroadcastState = (
+      status: GameState['status'],
+      dealerCards: Card[] = [createCard('K', 10), createCard('7', 7)],
+    ): GameState => ({
+      id: GAME_ID,
+      status,
+      players: [createPlayer(MY_USER, 0)],
+      dealerHand: dealerCards,
+      pot: 100,
+      currentPlayerIndex: 0,
+      deckCards: createFullDeck(),
+    })
+
+    const stub = (state: GameState) => {
+      redisMock.get.mockResolvedValue(JSON.stringify(state))
+      prismaMock.user = {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: MY_USER, username: 'player-one' }]),
+      }
+    }
+
+    it('player-turn: 莊家翻牌前暗牌不外流, 只送開牌(upcard)一張', async () => {
+      stub(createBroadcastState('playing'))
+
+      // state 已 stub 且 game 存在, 不會回傳 null
+      const broadcast = (await service.getBroadcastState(GAME_ID))!
+
+      expect(broadcast.status).toBe('player-turn')
+      // 安全意圖: 若翻牌前暗牌外流, 玩家直接看到莊家第二張, 黑傑克判定失衡
+      expect(broadcast.dealerHand).toHaveLength(1)
+      expect(broadcast.dealerHand[0].card).toBe('K♠')
+    })
+
+    it('waiting: 尚未發牌時 dealerHand 送空陣列', async () => {
+      stub(createBroadcastState('waiting', []))
+
+      const broadcast = (await service.getBroadcastState(GAME_ID))!
+
+      expect(broadcast.status).toBe('waiting')
+      expect(broadcast.dealerHand).toHaveLength(0)
+    })
+
+    it('dealer-turn: 莊家開始出牌後暗牌揭示, 送完整兩張', async () => {
+      stub(createBroadcastState('dealer-turn'))
+
+      const broadcast = (await service.getBroadcastState(GAME_ID))!
+
+      expect(broadcast.status).toBe('dealer-turn')
+      expect(broadcast.dealerHand).toHaveLength(2)
+      expect(broadcast.dealerHand.map((c) => c.card)).toEqual(['K♠', '7♠'])
+    })
+
+    it('completed: 結算後 dealerHand 維持完整兩張', async () => {
+      stub(createBroadcastState('completed'))
+
+      const broadcast = (await service.getBroadcastState(GAME_ID))!
+
+      expect(broadcast.status).toBe('completed')
+      expect(broadcast.dealerHand).toHaveLength(2)
+    })
+
+    it('completed + stateOverride: 最終一局的 in-memory 狀態回傳完整 dealerHand(2 張)+ results, 且不從已清除的 Redis 重建 (B1 回歸防禦)', async () => {
+      // 結算後 handleDealerTurn 會 redis.del('game:<id>:state'),
+      // 此時若走 Redis/DB 路徑, 重建出的 dealerHand 是空的、沒有 results
+      redisMock.get.mockResolvedValue(null)
+      prismaMock.user = {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: MY_USER, username: 'player-one' }]),
+      }
+
+      const finalState: GameState = {
+        ...createBroadcastState('completed'),
+        results: [{ userId: MY_USER, result: 'win', payout: 150 }],
+      }
+
+      const broadcast = await service.getBroadcastState(GAME_ID, finalState)
+
+      expect(broadcast).not.toBeNull()
+      // 玩家收到的最後一筆廣播必須带完整莊家牌與派彩, 否則前端顯示 "No cards dealt yet" 且沒有 You won/lost
+      expect(broadcast!.status).toBe('completed')
+      expect(broadcast!.dealerHand).toHaveLength(2)
+      expect(broadcast!.dealerHand.map((c) => c.card)).toEqual(['K♠', '7♠'])
+      expect(broadcast!.results).toHaveLength(1)
+      expect(broadcast!.results![0]).toEqual({
+        userId: MY_USER,
+        won: true,
+        payout: 150,
+        reason: 'win',
+      })
+      // username 查詢在 override 路徑也要做
+      expect(broadcast!.players[0].username).toBe('player-one')
+      // 廣播永不外露整副剩餘牌序 / raw GameState
+      expect((broadcast as { deckCards?: unknown }).deckCards).toBeUndefined()
+      // 證據: override 短路, 沒有碰 Redis
+      expect(redisMock.get).not.toHaveBeenCalled()
+    })
+
+    it('player-turn + stateOverride: 暗牌遮蔽邏輯一樣成立, 只送一張開牌 (B2 遮蔽防禦)', async () => {
+      redisMock.get.mockResolvedValue(null)
+      prismaMock.user = {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: MY_USER, username: 'player-one' }]),
+      }
+
+      // in-memory 狀態裡莊家已有兩張牌, 翻牌前只該送第一張
+      const midState = createBroadcastState('playing')
+      expect(midState.dealerHand).toHaveLength(2)
+
+      const broadcast = await service.getBroadcastState(GAME_ID, midState)
+
+      expect(broadcast!.status).toBe('player-turn')
+      expect(broadcast!.dealerHand).toHaveLength(1)
+      expect(broadcast!.dealerHand[0].card).toBe('K♠')
+      expect((broadcast as { deckCards?: unknown }).deckCards).toBeUndefined()
+      expect(redisMock.get).not.toHaveBeenCalled()
+    })
+  })
 })

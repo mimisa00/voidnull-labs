@@ -224,4 +224,74 @@ export class WalletService {
       return updatedWallet
     })
   }
+
+  async chargeEntryFee(userId: string, amount: number, description?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const wallet = await tx.wallet.findUnique({
+        where: { userId },
+      })
+
+      if (!wallet) {
+        throw new NotFoundException(`Wallet not found for user ${userId}`)
+      }
+
+      if (wallet.balance.lessThan(new Decimal(amount))) {
+        throw new BadRequestException('Insufficient balance')
+      }
+
+      const balanceBefore = wallet.balance
+      const newBalance = balanceBefore.minus(new Decimal(amount))
+
+      const updatedWallet = await tx.wallet.update({
+        where: { userId },
+        data: { balance: newBalance },
+      })
+
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'tournament_entry',
+          amount: new Decimal(amount).negated(),
+          balanceBefore,
+          balanceAfter: newBalance,
+          description,
+        },
+      })
+
+      return updatedWallet
+    })
+  }
+
+  async creditPrize(userId: string, amount: number, description?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const wallet = await tx.wallet.findUnique({
+        where: { userId },
+      })
+
+      if (!wallet) {
+        throw new NotFoundException(`Wallet not found for user ${userId}`)
+      }
+
+      const balanceBefore = wallet.balance
+      const newBalance = balanceBefore.plus(new Decimal(amount))
+
+      const updatedWallet = await tx.wallet.update({
+        where: { userId },
+        data: { balance: newBalance },
+      })
+
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'tournament_prize',
+          amount: new Decimal(amount),
+          balanceBefore,
+          balanceAfter: newBalance,
+          description,
+        },
+      })
+
+      return updatedWallet
+    })
+  }
 }

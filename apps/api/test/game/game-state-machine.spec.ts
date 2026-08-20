@@ -1,4 +1,4 @@
-import { GameStateMachine } from '../../src/game/game-state-machine'
+import { GameAction, GameStateMachine } from '../../src/game/game-state-machine'
 import {
   GameState,
   PlayerState,
@@ -123,13 +123,17 @@ describe('GameStateMachine', () => {
       expect(result).toBe(false)
     })
 
-    it('should return true for split when it is the player turn (not yet restricted)', () => {
+    it('should return false for split (split is no longer a supported action)', () => {
       const player = createMockPlayer('user-1')
       const gameState = createMockGameState([player], 'playing', 0)
 
-      const result = stateMachine.isValidAction(gameState, 'user-1', 'split')
+      const result = stateMachine.isValidAction(
+        gameState,
+        'user-1',
+        'split' as unknown as GameAction,
+      )
 
-      expect(result).toBe(true)
+      expect(result).toBe(false)
     })
 
     it('should return false when player does not exist in game', () => {
@@ -352,15 +356,20 @@ describe('GameStateMachine', () => {
     })
 
     describe('split action', () => {
-      it('should move to next player after split (split action does nothing but moves to next)', () => {
+      it('should no longer be handled by processAction (player state unchanged)', () => {
         const player1 = createMockPlayer('user-1')
         const player2 = createMockPlayer('user-2')
         const gameState = createMockGameState([player1, player2], 'playing', 0)
 
-        const result = stateMachine.processAction(gameState, 'user-1', 'split')
+        const result = stateMachine.processAction(
+          gameState,
+          'user-1',
+          'split' as unknown as GameAction,
+        )
 
-        // Split is not implemented, so it just moves to next player
-        expect(result.currentPlayerIndex).toBe(1)
+        // split is no longer a supported action: player hand and status are unaffected
+        expect(result.players[0].hand).toHaveLength(2)
+        expect(result.players[0].status).toBe('playing')
       })
     })
 

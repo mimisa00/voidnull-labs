@@ -1,35 +1,55 @@
 import React from 'react'
+import type { GameResultRow, GameStatusValue } from '../types'
 
 interface GameStatusProps {
-  gameState: any
+  status: GameStatusValue
+  pot: number
+  turnMessage: string
+  myResult: GameResultRow | null
 }
 
-export const GameStatus: React.FC<GameStatusProps> = ({ gameState }) => {
+export const GameStatus: React.FC<GameStatusProps> = ({
+  status,
+  pot,
+  turnMessage,
+  myResult,
+}) => {
   return (
     <div className="bg-card p-4 rounded-lg border border-border">
       <h3 className="text-xl font-semibold mb-4 text-card-foreground">
         Game Status
       </h3>
-      {gameState ? (
-        <div className="space-y-2 text-card-foreground">
-          <p>
-            <span className="font-medium">Status:</span> {gameState.status}
-          </p>
-          <p>
-            <span className="font-medium">Current Turn:</span>{' '}
-            {gameState.currentTurn || 'None'}
-          </p>
-          <p>
-            <span className="font-medium">Pot:</span> ${gameState.pot || 0}
-          </p>
-          <p>
-            <span className="font-medium">Players:</span>{' '}
-            {gameState.players?.length || 0}
-          </p>
-        </div>
-      ) : (
-        <p className="text-muted-foreground">No game data available</p>
-      )}
+      <div className="space-y-2 text-card-foreground">
+        <p>
+          <span className="font-medium">Status:</span> {status}
+        </p>
+        <p>
+          <span className="font-medium">Turn:</span> {turnMessage}
+        </p>
+        <p>
+          <span className="font-medium">Pot:</span> ${pot || 0}
+        </p>
+        {myResult && (
+          <div
+            className={`mt-4 p-3 rounded-lg text-sm font-semibold ${
+              myResult.reason === 'win'
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : myResult.reason === 'push'
+                  ? 'bg-slate-500/15 text-slate-600 dark:text-slate-400'
+                  : 'bg-red-500/15 text-red-600 dark:text-red-400'
+            }`}
+          >
+            {myResult.reason === 'win'
+              ? 'You won!'
+              : myResult.reason === 'push'
+                ? 'Push'
+                : 'You lost'}
+            <span className="block font-normal mt-1">
+              Payout: ${myResult.payout || 0}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

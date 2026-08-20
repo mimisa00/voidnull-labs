@@ -2,12 +2,17 @@ import { io, Socket } from 'socket.io-client'
 
 let socket: Socket | null = null
 
+function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null
+  // Cookie is the primary source (login writes cookie first); localStorage is fallback
+  const match = document.cookie.match(/(^|; )access_token=([^;]*)/)
+  if (match) return decodeURIComponent(match[2])
+  return localStorage.getItem('access_token')
+}
+
 export function getSocket(): Socket {
   if (!socket) {
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('access_token')
-        : null
+    const token = getAccessToken()
     socket = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001', {
       auth: { token },
       autoConnect: false,

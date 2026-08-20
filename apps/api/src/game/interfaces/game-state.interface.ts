@@ -27,4 +27,9 @@ export interface GameResult {
   payout: number
 }
 
-export type GameAction = 'hit' | 'stand' | 'double' | 'split'
+export type GameAction = 'hit' | 'stand' | 'double'
+
+export type PlayingCard = { card: string; suit: string; value: number; rank: number }
+export type PlayerEntry = { userId: string; username: string; hand: PlayingCard[]; bet: number; status: 'playing'|'bust'|'stand'|'blackjack'|'settled'; score: number }
+export type GameResultRow = { userId: string; won: boolean; payout: number; reason: string }
+export type BroadcastState = { status: 'waiting'|'dealing'|'player-turn'|'dealer-turn'|'completed'; pot: number; dealerHand: PlayingCard[]; currentPlayerIndex: number; players: PlayerEntry[]; results?: GameResultRow[] }

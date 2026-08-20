@@ -17,8 +17,27 @@ import {
   GameResult,
   PlayerState,
   GameAction,
+  BroadcastState,
+  PlayingCard,
+  PlayerEntry,
 } from './interfaces/game-state.interface'
 import { CreateGameDto, UpdateGameDto } from './game.dto'
+
+const RANK_TO_NUMBER: Record<Card['rank'], number> = {
+  A: 14,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  '5': 5,
+  '6': 6,
+  '7': 7,
+  '8': 8,
+  '9': 9,
+  '10': 10,
+  J: 11,
+  Q: 12,
+  K: 13,
+}
 
 @Injectable()
 export class GameService {
@@ -222,6 +241,11 @@ export class GameService {
 
     if (action === 'double') {
       const player = gameState.players.find((p) => p.userId === userId)
+      if (!player) {
+        throw new BadRequestException(
+          `Player ${userId} not found in game ${gameId}`,
+        )
+      }
       await this.wallet.placeBet(userId, gameId, player.bet)
     }
 
@@ -430,5 +454,121 @@ export class GameService {
         `Failed to write game state cache for game ${gameId}: ${err}`,
       )
     }
+  }
+
+  /**
+   * 建立已遮蔽的 BroadcastState(不含 deckCards, 莊家暗牌依 status 遮蔽)。
+   * - 傳入 stateOverride(非空的 in-memory GameState)時直接用它, 不讀 Redis/DB;
+   *   用於結算瞬間: Redis 已被 del, 從 DB 重建會丟掉 dealerHand/results。
+   * - 未傳時走原本的 Redis 快取 / DB 重建邏輯。
+   */
+  async getBroadcastState(
+    gameId: string,
+    stateOverride?: GameState,
+  ): Promise<BroadcastState | null> {
+    let state: GameState
+    if (stateOverride) {
+      state = stateOverride
+    } else {
+      try {
+        state = await this.getGameState(gameId)
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          return null
+        }
+        throw err
+      }
+    }
+
+    return this.toBroadcastState(state)
+  }
+
+  private async toBroadcastState(state: GameState): Promise<BroadcastState> {
+    const userIds = state.players.map((player) => player.userId)
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, username: true },
+    })
+    const usernameById = new Map(users.map((user) => [user.id, user.username]))
+
+    const players: PlayerEntry[] = state.players.map((player) => ({
+      userId: player.userId,
+      username: usernameById.get(player.userId) ?? '',
+      hand: player.hand.map((card) => this.toPlayingCard(card)),
+      bet: player.bet,
+      status: this.toPlayerEntryStatus(player.status),
+      score: this.evaluateHandScore(player.hand),
+    }))
+
+    const status = this.toBroadcastStatus(state.status)
+    // 莊家翻牌前隱藏暗牌: 只送開牌(upcard = dealerHand[0]), 暗牌(dealerHand[1])不外流
+    const visibleDealerHand =
+      status === 'dealer-turn' || status === 'completed'
+        ? state.dealerHand
+        : state.dealerHand.slice(0, 1)
+    const broadcast: BroadcastState = {
+      status,
+      pot: state.pot,
+      dealerHand: visibleDealerHand.map((card) => this.toPlayingCard(card)),
+      currentPlayerIndex:
+        status === 'completed' ? -1 : state.currentPlayerIndex,
+      players,
+    }
+
+    if (state.results) {
+      broadcast.results = state.results.map((result) => ({
+        userId: result.userId,
+        won: result.result === 'win',
+        payout: result.payout,
+        reason: result.result,
+      }))
+    }
+
+    return broadcast
+  }
+
+  private toPlayingCard(card: Card): PlayingCard {
+    return {
+      card: `${card.rank}${card.suit}`,
+      suit: card.suit,
+      value: card.value,
+      rank: RANK_TO_NUMBER[card.rank],
+    }
+  }
+
+  private toBroadcastStatus(
+    status: GameState['status'],
+  ): BroadcastState['status'] {
+    switch (status) {
+      case 'waiting':
+        return 'waiting'
+      case 'playing':
+        return 'player-turn'
+      case 'dealer-turn':
+        return 'dealer-turn'
+      case 'completed':
+        return 'completed'
+      default:
+        return 'waiting'
+    }
+  }
+
+  private toPlayerEntryStatus(
+    status: PlayerState['status'],
+  ): PlayerEntry['status'] {
+    switch (status) {
+      case 'playing':
+        return 'playing'
+      case 'stand':
+        return 'stand'
+      case 'bust':
+        return 'bust'
+      default:
+        return 'settled'
+    }
+  }
+
+  private evaluateHandScore(hand: Card[]): number {
+    return new BlackjackEngine().evaluateHand({ cards: hand }).value
   }
 }
