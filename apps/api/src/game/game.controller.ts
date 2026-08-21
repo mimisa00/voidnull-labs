@@ -7,10 +7,12 @@ import {
   Param,
   Body,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { GameService } from './game.service'
-import { CreateGameDto, UpdateGameDto } from './game.dto'
+import { CreateGameDto, UpdateGameDto, ReplenishGameDto } from './game.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { PermissionsGuard } from '../rbac/guards/permissions.guard'
 import { Permissions } from '../rbac/decorators/permissions.decorator'
@@ -50,5 +52,19 @@ export class GameController {
   @Permissions('games:delete')
   remove(@Param('id') id: string) {
     return this.gameService.remove(id)
+  }
+
+  @Post(':id/close')
+  @HttpCode(HttpStatus.OK)
+  @Permissions('games:update')
+  close(@Param('id') id: string) {
+    return this.gameService.closeGame(id)
+  }
+
+  @Post(':id/replenish')
+  @HttpCode(HttpStatus.OK)
+  @Permissions('games:update')
+  replenish(@Param('id') id: string, @Body() dto: ReplenishGameDto) {
+    return this.gameService.replenish(id, dto)
   }
 }

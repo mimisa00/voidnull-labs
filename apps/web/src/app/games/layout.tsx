@@ -8,6 +8,8 @@ import { connectSocket, disconnectSocket } from '@/lib/socket'
 const NAV = [
   { href: '/games/lobby', label: 'Lobby', icon: '🎮' },
   { href: '/games/blackjack', label: 'Blackjack', icon: '♠️' },
+  { href: '/tournaments', label: 'Tournaments', icon: '🏆' },
+  { href: '/leaderboard', label: 'Leaderboard', icon: '📊' },
 ]
 
 export default function GamesLayout({

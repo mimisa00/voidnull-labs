@@ -77,6 +77,7 @@ model Game {
   maxPlayers   Int
   buyIn        Int
   pot          Int
+  bankroll     Int      @default(0) // 桌內籌碼池;與 pot(單局 pot)語意分離,純加性
   players      PlayerGame[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

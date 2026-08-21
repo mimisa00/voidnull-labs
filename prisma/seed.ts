@@ -213,6 +213,18 @@ async function main() {
     },
   })
 
+  // Create the house pool row (single row by convention, no unique constraint).
+  // findFirst -> create keeps re-runs idempotent: balance is never reset.
+  const houseAsset = await prisma.cageAsset.findFirst({
+    where: { assetType: 'house_rolling' },
+  })
+
+  if (!houseAsset) {
+    await prisma.cageAsset.create({
+      data: { assetType: 'house_rolling', amount: 100000 },
+    })
+  }
+
   console.log('Database seeded successfully')
 }
 

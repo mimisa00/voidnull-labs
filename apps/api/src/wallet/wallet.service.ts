@@ -26,6 +26,16 @@ export class WalletService {
     return wallet
   }
 
+  async ensureWallet(userId: string) {
+    const existing = await this.prisma.wallet.findFirst({
+      where: { userId },
+    })
+    if (existing) return existing
+    return this.prisma.wallet.create({
+      data: { userId, balance: 0 },
+    })
+  }
+
   async placeBet(userId: string, gameId: string, betAmount: number) {
     return this.prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.findUnique({

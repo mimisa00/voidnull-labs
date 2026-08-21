@@ -5,6 +5,7 @@ export class CreateGameDto {
   @ApiProperty() @IsString() type: string
   @ApiProperty() @IsInt() @Min(1) maxPlayers: number
   @ApiProperty() @IsInt() @Min(0) buyIn: number
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) bankroll?: number
 }
 
 export class UpdateGameDto {
@@ -12,4 +13,8 @@ export class UpdateGameDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) maxPlayers?: number
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) buyIn?: number
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string
+}
+
+export class ReplenishGameDto {
+  @ApiProperty() @IsInt() @Min(1) amount: number
 }

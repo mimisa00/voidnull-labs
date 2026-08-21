@@ -6,9 +6,11 @@ import {
   Logger,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { Decimal } from '@prisma/client/runtime/library'
 import { PrismaService } from '../prisma/prisma.service'
 import { RedisService } from '../redis/redis.service'
 import { WalletService } from '../wallet/wallet.service'
+import { HouseService } from '../wallet/house.service'
 import { Deck, Card } from './engines/card-deck'
 import { BlackjackEngine } from './engines/blackjack.engine'
 import { GameStateMachine } from './game-state-machine'
@@ -21,7 +23,7 @@ import {
   PlayingCard,
   PlayerEntry,
 } from './interfaces/game-state.interface'
-import { CreateGameDto, UpdateGameDto } from './game.dto'
+import { CreateGameDto, UpdateGameDto, ReplenishGameDto } from './game.dto'
 
 const RANK_TO_NUMBER: Record<Card['rank'], number> = {
   A: 14,
@@ -48,18 +50,22 @@ export class GameService {
     private prisma: PrismaService,
     private wallet: WalletService,
     private redis: RedisService,
+    private house: HouseService,
   ) {}
 
   findAll() {
     return this.prisma.game.findMany({
+      where: { status: { not: 'closed' } },
       select: {
         id: true,
         type: true,
         maxPlayers: true,
         buyIn: true,
         status: true,
+        bankroll: true,
         createdAt: true,
         updatedAt: true,
+        players: { select: { user: { select: { username: true } } } },
       },
     })
   }
@@ -71,8 +77,14 @@ export class GameService {
   }
 
   async create(dto: CreateGameDto) {
-    return this.prisma.game.create({
-      data: { ...dto, status: 'waiting', pot: 0 },
+    const bankroll = dto.bankroll ?? dto.maxPlayers * dto.buyIn
+    return this.prisma.$transaction(async (tx) => {
+      // 不足守衛在 houseMove 內(帶 gte 條件的原子 updateMany),
+      // 此處不再做預讀——預檢是 TOCTOU 冗餘。
+      await this.house.houseMove(-bankroll, tx)
+      return tx.game.create({
+        data: { ...dto, bankroll, status: 'waiting', pot: 0 },
+      })
     })
   }
 
@@ -85,6 +97,61 @@ export class GameService {
     await this.findOne(id)
     await this.prisma.game.delete({ where: { id } })
     return { message: 'Game deleted' }
+  }
+
+  async closeGame(id: string) {
+    // findOne 預檢是 tx 外 advisory(快速 404 / 409); 權威檢查與寫入全在 tx 內
+    const game = await this.findOne(id)
+    if (game.status === 'closed') {
+      throw new ConflictException(`Game ${id} is already closed`)
+    }
+    return this.prisma.$transaction(async (tx) => {
+      // 行鎖取新值: join 的 bankroll increment UPDATE 會在此阻塞, 消掉 stale-read race
+      const [locked] = (await tx.$queryRaw`SELECT "bankroll", "status" FROM "Game" WHERE id = ${id} FOR UPDATE`) as [
+        { bankroll: string | number; status: string },
+      ]
+      if (!locked) {
+        throw new NotFoundException(`Game ${id} not found`)
+      }
+      if (locked.status === 'closed') {
+        throw new ConflictException(`Game ${id} is already closed`)
+      }
+      const seatedPlayers = await tx.playerGame.count({
+        where: { gameId: id, status: 'playing' },
+      })
+      if (seatedPlayers > 0) {
+        throw new ConflictException('cannot close: players at table')
+      }
+      // 用鎖後新值回增; bankroll 為 0 就跳過, 避免 bootstrap 零值 house 行
+      const bankroll = new Decimal(locked.bankroll)
+      if (bankroll.greaterThan(0)) {
+        await this.house.houseMove(bankroll.toNumber(), tx)
+      }
+      return tx.game.update({
+        where: { id },
+        data: { status: 'closed', bankroll: 0 },
+      })
+    })
+  }
+
+  async replenish(id: string, dto: ReplenishGameDto) {
+    const game = await this.findOne(id)
+    if (game.status === 'closed') {
+      throw new ConflictException(`Game ${id} is already closed`)
+    }
+    return this.prisma.$transaction(async (tx) => {
+      // 不足守衛在 houseMove 內(帶 gte 條件的原子 updateMany), 不足 throw 400
+      await this.house.houseMove(-dto.amount, tx)
+      // status 守衛是權威(併發 close 可能在預檢後發生), count=0 throw 回滾整筆
+      const result = await tx.game.updateMany({
+        where: { id, status: { not: 'closed' } },
+        data: { bankroll: { increment: dto.amount } },
+      })
+      if (result.count === 0) {
+        throw new ConflictException(`Game ${id} is already closed`)
+      }
+      return tx.game.findUnique({ where: { id } })
+    })
   }
 
   async joinGame(gameId: string, userId: string) {
@@ -124,6 +191,11 @@ export class GameService {
     }
 
     const updatedWallet = await this.wallet.placeBet(userId, gameId, game.buyIn)
+
+    await this.prisma.game.update({
+      where: { id: gameId },
+      data: { bankroll: { increment: game.buyIn } },
+    })
 
     const position = playerCount
     await this.prisma.playerGame.create({
@@ -247,6 +319,10 @@ export class GameService {
         )
       }
       await this.wallet.placeBet(userId, gameId, player.bet)
+      await this.prisma.game.update({
+        where: { id: gameId },
+        data: { bankroll: { increment: player.bet } },
+      })
     }
 
     let drawnCard: Card | undefined
@@ -376,6 +452,17 @@ export class GameService {
       }
 
       const results = gameState.results ?? []
+      // D2 錢流: 結算時桌籌碼池扣回 payoutWin 合計。結算狀態已需提交,
+      // 不新增 throwing 守衛;病態負值照實寫入, 不 clamp(SA 決策)。
+      await tx.game.update({
+        where: { id: gameId },
+        data: {
+          bankroll: {
+            decrement: results.reduce((sum, r) => sum + r.payout, 0),
+          },
+        },
+      })
+
       for (const player of gameState.players) {
         const result = results.find((r) => r.userId === player.userId)
         await tx.playerGame.update({

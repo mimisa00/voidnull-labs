@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '../prisma/prisma.service'
 import { RedisService } from '../redis/redis.service'
+import { WalletService } from '../wallet/wallet.service'
 import * as bcrypt from 'bcrypt'
 import {
   generateSecret,
@@ -41,6 +42,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private redis: RedisService,
+    private walletService: WalletService,
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -101,6 +103,8 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email: dto.email, username: dto.username, password: hashed },
     })
+
+    await this.walletService.ensureWallet(user.id)
 
     return { message: 'Registration successful', userId: user.id }
   }

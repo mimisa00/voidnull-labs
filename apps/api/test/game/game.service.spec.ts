@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common'
+import { BadRequestException, ConflictException } from '@nestjs/common'
 import { GameService } from '../../src/game/game.service'
 import {
   GameState,
@@ -15,6 +15,7 @@ describe('GameService', () => {
   let prismaMock: any
   let walletMock: any
   let redisMock: any
+  let houseMock: any
 
   const createCard = (rank: string, value: number): Card => ({
     suit: '♠',
@@ -69,7 +70,9 @@ describe('GameService', () => {
   })
 
   beforeEach(() => {
-    prismaMock = {}
+    prismaMock = {
+      game: { update: jest.fn().mockResolvedValue({}) },
+    }
     walletMock = {
       placeBet: jest.fn().mockResolvedValue({}),
       payoutGameResults: jest.fn(),
@@ -79,8 +82,12 @@ describe('GameService', () => {
       set: jest.fn().mockResolvedValue('OK'),
       del: jest.fn().mockResolvedValue(1),
     }
+    houseMock = {
+      houseBalance: jest.fn().mockResolvedValue(0),
+      houseMove: jest.fn().mockResolvedValue(0),
+    }
 
-    service = new GameService(prismaMock, walletMock, redisMock)
+    service = new GameService(prismaMock, walletMock, redisMock, houseMock)
   })
 
   describe('handleAction', () => {
@@ -255,6 +262,130 @@ describe('GameService', () => {
       expect(broadcast!.dealerHand[0].card).toBe('K♠')
       expect((broadcast as { deckCards?: unknown }).deckCards).toBeUndefined()
       expect(redisMock.get).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('create', () => {
+    it('house 不足 → reject, tx.game.create 不被呼叫', async () => {
+      houseMock.houseMove.mockRejectedValue(
+        new BadRequestException('house pool insufficient'),
+      )
+      let txMock: any
+      prismaMock.$transaction = jest.fn(
+        async (fn: (tx: any) => Promise<unknown>) =>
+          fn(
+            (txMock = {
+              game: { create: jest.fn().mockResolvedValue({ id: GAME_ID }) },
+            }),
+          ),
+      )
+
+      await expect(
+        service.create({ type: 'blackjack', maxPlayers: 2, buyIn: 100 }),
+      ).rejects.toThrow(BadRequestException)
+
+      // 扣款意圖: bankroll = maxPlayers * buyIn = 200, 方向為負
+      expect(houseMock.houseMove).toHaveBeenCalledWith(-200, txMock)
+      expect(txMock.game.create).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('closeGame', () => {
+    it('tx 內行鎖發現已 closed → reject 409, 不做回增與寫入(消 stale-read race)', async () => {
+      // 外部預檢讀到的是舊值(waiting), 鎖後的新值才是 closed
+      prismaMock.game.findUnique = jest.fn().mockResolvedValue({
+        id: GAME_ID,
+        status: 'waiting',
+        bankroll: 300,
+      })
+      let txMock: any
+      prismaMock.$transaction = jest.fn(
+        async (fn: (tx: any) => Promise<unknown>) =>
+          fn(
+            (txMock = {
+              $queryRaw: jest.fn().mockResolvedValue([
+                { bankroll: 0, status: 'closed' },
+              ]),
+              playerGame: { count: jest.fn().mockResolvedValue(0) },
+              game: { update: jest.fn().mockResolvedValue({}) },
+            }),
+          ),
+      )
+
+      await expect(service.closeGame(GAME_ID)).rejects.toThrow(ConflictException)
+
+      // 意圖: 已閉桌不可再回增一次 bankroll(house 會被重複加)
+      expect(houseMock.houseMove).not.toHaveBeenCalled()
+      expect(txMock.game.update).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('replenish', () => {
+    it('house 不足 → reject 400, tx.game.updateMany 不被呼叫(整筆回滾)', async () => {
+      prismaMock.game.findUnique = jest.fn().mockResolvedValue({
+        id: GAME_ID,
+        status: 'waiting',
+      })
+      houseMock.houseMove.mockRejectedValue(
+        new BadRequestException('house pool insufficient'),
+      )
+      let txMock: any
+      prismaMock.$transaction = jest.fn(
+        async (fn: (tx: any) => Promise<unknown>) =>
+          fn(
+            (txMock = {
+              game: {
+                updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                findUnique: jest.fn(),
+              },
+            }),
+          ),
+      )
+
+      await expect(
+        service.replenish(GAME_ID, { amount: 100 }),
+      ).rejects.toThrow(BadRequestException)
+
+      // 扣款意圖: 方向為負
+      expect(houseMock.houseMove).toHaveBeenCalledWith(-100, txMock)
+      // houseMove throw 後 bankroll 不可被寫入
+      expect(txMock.game.updateMany).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('persistGameResult', () => {
+    it('結算: bankroll 以 decrement 扣回 payout 總和(原子相對寫, 非絕對值寫回)', async () => {
+      const state = createGameState()
+      state.status = 'completed'
+      state.results = [
+        { userId: MY_USER, result: 'win', payout: 150 },
+        { userId: OTHER_USER, result: 'win', payout: 100 },
+      ]
+
+      const txMock = {
+        game: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        playerGame: { update: jest.fn().mockResolvedValue({}) },
+        gameHistory: { create: jest.fn().mockResolvedValue({}) },
+      }
+      prismaMock.$transaction = jest.fn(
+        async (fn: (tx: any) => Promise<unknown>) => fn(txMock),
+      )
+
+      const canSettle = await (service as any).persistGameResult(
+        GAME_ID,
+        state,
+      )
+
+      expect(canSettle).toBe(true)
+      // 意圖: 結算扣款必須是原子相對 decrement(Σ payout = 250),
+      // 絕對值寫回會覆蓋並發入款(double-in 等)造成的 increment
+      expect(txMock.game.update).toHaveBeenCalledWith({
+        where: { id: GAME_ID },
+        data: { bankroll: { decrement: 250 } },
+      })
     })
   })
 })

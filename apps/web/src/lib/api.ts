@@ -106,4 +106,118 @@ export const gamesApi = {
   getGames: (params?: Record<string, any>) =>
     api.get('/games', { params }).then((r) => r.data),
   getGame: (id: string) => api.get(`/games/${id}`).then((r) => r.data),
+  update: (id: string, dto: UpdateGameInput) =>
+    api.patch(`/games/${id}`, dto).then((r) => r.data),
+  close: (id: string) => api.post(`/games/${id}/close`).then((r) => r.data),
+  replenish: (id: string, amount: number) =>
+    api.post(`/games/${id}/replenish`, { amount }).then((r) => r.data),
+}
+
+export interface WalletInfo {
+  id: string
+  userId: string
+  balance: string
+  currency: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TournamentUser {
+  id: string
+  username: string
+  displayName: string | null
+}
+
+export interface TournamentParticipant {
+  id: string
+  tournamentId: string
+  userId: string
+  entryTime: string
+  status: string
+  user: TournamentUser
+}
+
+export interface TournamentResult {
+  id: string
+  tournamentId: string
+  userId: string
+  rank: number
+  finalBalance: string
+  prize: string
+  createdAt: string
+  user: TournamentUser
+}
+
+// Base record as returned by POST /tournaments (plain create result).
+export interface TournamentBase {
+  id: string
+  name: string
+  status: string
+  startTime: string
+  endTime: string
+  maxPlayers: number
+  entryFee: number
+  prizePool: number
+  createdAt: string
+  updatedAt: string
+}
+
+// Element of GET /tournaments: base fields + _count (no participants/results).
+export interface TournamentListItem extends TournamentBase {
+  _count: { participants: number }
+}
+
+// GET /tournaments/:id: base fields + participants/results (no _count).
+export interface TournamentDetail extends TournamentBase {
+  participants: TournamentParticipant[]
+  results: TournamentResult[]
+}
+
+export interface CreateTournamentInput {
+  name: string
+  startTime: string
+  endTime: string
+  maxPlayers: number
+  entryFee: number
+  prizePool?: number
+}
+
+export interface LeaderboardEntry {
+  rank: number
+  userId: string
+  username: string
+  displayName: string | null
+  totalWinnings: string
+  gamesWon: number
+}
+
+export interface UpdateGameInput {
+  type?: string
+  maxPlayers?: number
+  buyIn?: number
+  status?: string
+}
+
+export const walletApi = {
+  me: () => api.get<WalletInfo>('/wallet/me').then((r) => r.data),
+}
+
+export const tournamentsApi = {
+  list: () =>
+    api.get<TournamentListItem[]>('/tournaments').then((r) => r.data),
+  get: (id: string) =>
+    api.get<TournamentDetail>(`/tournaments/${id}`).then((r) => r.data),
+  create: (dto: CreateTournamentInput) =>
+    api.post<TournamentBase>('/tournaments', dto).then((r) => r.data),
+  join: (id: string) =>
+    api.post(`/tournaments/${id}/join`).then((r) => r.data),
+  settle: (id: string) =>
+    api.post(`/tournaments/${id}/settle`).then((r) => r.data),
+}
+
+export const leaderboardApi = {
+  get: (limit = 10) =>
+    api.get<LeaderboardEntry[]>(`/leaderboard?limit=${limit}`).then(
+      (r) => r.data,
+    ),
 }

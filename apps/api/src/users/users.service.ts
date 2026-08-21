@@ -4,6 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { WalletService } from '../wallet/wallet.service'
 import * as bcrypt from 'bcrypt'
 import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto'
 
@@ -21,7 +22,10 @@ const USER_SELECT = {
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private walletService: WalletService,
+  ) {}
 
   findAll(page = 1, limit = 20) {
     const skip = (page - 1) * limit
@@ -57,10 +61,12 @@ export class UsersService {
     })
     if (exists) throw new ConflictException('Email or username already taken')
     const password = await bcrypt.hash(dto.password, 12)
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: { ...dto, password },
       select: USER_SELECT,
     })
+    await this.walletService.ensureWallet(user.id)
+    return user
   }
 
   async update(id: string, dto: UpdateUserDto) {
