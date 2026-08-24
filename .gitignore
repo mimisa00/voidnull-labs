@@ -42,6 +42,7 @@ cloudflare.ini
 
 .playwright-mcp
 .qa-artifacts/
+.opencode
 
 # Build cache
 *.tsbuildinfo
