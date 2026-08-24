@@ -228,7 +228,7 @@ export class AuthService {
   }
 
   private async generateTokenPair(user: UserWithRoles) {
-    const roles = user.userRoles.map((ur) => ur.role.name)
+    const roles = [...new Set(user.userRoles.map((ur) => ur.role.name))]
     const permissions = [
       ...new Set(
         user.userRoles.flatMap((ur) =>
