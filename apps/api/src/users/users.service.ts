@@ -86,9 +86,10 @@ export class UsersService {
 
   async assignRoles(userId: string, roleIds: string[]) {
     await this.findOne(userId)
+    const uniqueRoleIds = [...new Set(roleIds)]
     await this.prisma.userRole.deleteMany({ where: { userId } })
     await this.prisma.userRole.createMany({
-      data: roleIds.map((roleId) => ({ userId, roleId })),
+      data: uniqueRoleIds.map((roleId) => ({ userId, roleId })),
     })
     return this.findOne(userId)
   }
