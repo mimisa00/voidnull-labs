@@ -78,6 +78,7 @@ model Game {
   buyIn        Int
   pot          Int
   bankroll     Int      @default(0) // 桌內籌碼池;與 pot(單局 pot)語意分離,純加性
+  tableNumber  Int?     @unique // 桌號;後端 create 時指派,可空以相容舊資料
   players      PlayerGame[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -96,9 +97,11 @@ model PlayerGame {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   
-  game       Game     @relation(fields: [gameId], references: [id])
-  user       User     @relation(fields: [playerId], references: [id])
-}
+   game       Game     @relation(fields: [gameId], references: [id])
+   user       User     @relation(fields: [playerId], references: [id])
+
+   @@unique([gameId, playerId])
+ }
 
 model GameHistory {
   id         String   @id @default(cuid())
