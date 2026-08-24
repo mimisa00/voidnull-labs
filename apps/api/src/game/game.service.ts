@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  ServiceUnavailableException,
   Logger,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
@@ -59,6 +61,7 @@ export class GameService {
       select: {
         id: true,
         type: true,
+        tableNumber: true,
         maxPlayers: true,
         buyIn: true,
         status: true,
@@ -82,8 +85,11 @@ export class GameService {
       // 不足守衛在 houseMove 內(帶 gte 條件的原子 updateMany),
       // 此處不再做預讀——預檢是 TOCTOU 冗餘。
       await this.house.houseMove(-bankroll, tx)
+      // 桌號指派: max+1, 併發下 @unique 約束會擋重複
+      const max = await tx.game.aggregate({ _max: { tableNumber: true } })
+      const tableNumber = (max._max.tableNumber ?? 0) + 1
       return tx.game.create({
-        data: { ...dto, bankroll, status: 'waiting', pot: 0 },
+        data: { ...dto, bankroll, status: 'waiting', pot: 0, tableNumber },
       })
     })
   }
@@ -94,9 +100,63 @@ export class GameService {
   }
 
   async remove(id: string) {
-    await this.findOne(id)
-    await this.prisma.game.delete({ where: { id } })
-    return { message: 'Game deleted' }
+    // 與 join 同 chain(key = join:${id}): join 的扣款/bankroll/入座列雖已收進
+    // 單一 tx, 但 remove 鎖後回流 house 前仍需擋住並發 join 的 bankroll
+    // increment, 故沿用同一條 per-game queue 串行化
+    return this.enqueueGameAction(`join:${id}`, () => this._removeInternal(id))
+  }
+
+  private async _removeInternal(id: string) {
+    // findOne 預檢是 tx 外 advisory(快速 404 / 403); 權威檢查與寫入全在 tx 內
+    const game = await this.findOne(id)
+    if (game.status === 'playing') {
+      throw new ForbiddenException(
+        `Game ${id} is playing, close or forfeit before deleting`,
+      )
+    }
+    const seatedPlayers = await this.prisma.playerGame.count({
+      where: { gameId: id, status: 'playing' },
+    })
+    if (seatedPlayers > 0) {
+      throw new ForbiddenException(
+        `Game ${id} has seated players, close or forfeit before deleting`,
+      )
+    }
+    return this.prisma.$transaction(async (tx) => {
+      // 行鎖取新值: 並發 join 的 bankroll increment / 開局轉 playing 會在此阻塞,
+      // 消掉 stale-read race(對齊 closeGame)
+      const [locked] = (await tx.$queryRaw`SELECT "bankroll", "status" FROM "Game" WHERE id = ${id} FOR UPDATE`) as [
+        { bankroll: string | number; status: string },
+      ]
+      if (!locked) {
+        throw new NotFoundException(`Game ${id} not found`)
+      }
+      if (locked.status === 'playing') {
+        throw new ForbiddenException(
+          `Game ${id} is playing, close or forfeit before deleting`,
+        )
+      }
+      const seated = await tx.playerGame.count({
+        where: { gameId: id, status: 'playing' },
+      })
+      if (seated > 0) {
+        throw new ForbiddenException(
+          `Game ${id} has seated players, close or forfeit before deleting`,
+        )
+      }
+      // 先清子列再刪主列, 否則 FK 約束(Restrict)會 500
+      await tx.playerGame.deleteMany({ where: { gameId: id } })
+      await tx.gameHistory.deleteMany({ where: { gameId: id } })
+      // wallet audit 列不刪: gameId 置空解除 FK, 資金軌跡完整保留(對齊 closeGame)
+      await tx.transaction.updateMany({ where: { gameId: id }, data: { gameId: null } })
+      // 用鎖後新值回流 house; bankroll 為 0 就跳過, 避免 bootstrap 零值 house 行
+      const bankroll = new Decimal(locked.bankroll)
+      if (bankroll.greaterThan(0)) {
+        await this.house.houseMove(bankroll.toNumber(), tx)
+      }
+      await tx.game.delete({ where: { id } })
+      return { message: 'Game deleted' }
+    })
   }
 
   async closeGame(id: string) {
@@ -134,6 +194,65 @@ export class GameService {
     })
   }
 
+  async forceCloseGame(id: string) {
+    // findOne 預檢是 tx 外 advisory(快速 404 / 409); 權威檢查與寫入全在 tx 內
+    const game = await this.findOne(id)
+    if (game.status === 'closed') {
+      throw new ConflictException(`Game ${id} is already closed`)
+    }
+    // 與 join/remove 同 chain(key = join:${id}): 串行化避免與 in-flight join 交錯;
+    // 行鎖仍是 tx 內權威守衛
+    return this.enqueueGameAction(`join:${id}`, async () => {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // 行鎖取新值: join 的 bankroll increment UPDATE 會在此阻塞, 消掉 stale-read race
+        const [locked] = (await tx.$queryRaw`SELECT "bankroll", "status" FROM "Game" WHERE id = ${id} FOR UPDATE`) as [
+          { bankroll: string | number; status: string },
+        ]
+        if (!locked) {
+          throw new NotFoundException(`Game ${id} not found`)
+        }
+        if (locked.status === 'closed') {
+          throw new ConflictException(`Game ${id} is already closed`)
+        }
+        // 全數 seated 強離: 標 forfeited 終態(buyIn 已在 bankroll, 不派彩);
+        // waiting 桌無 playing 列時為 no-op
+        const forfeitedCount = (
+          await tx.playerGame.updateMany({
+            where: { gameId: id, status: 'playing' },
+            data: { status: 'forfeited' },
+          })
+        ).count
+        // 用鎖後新值全數回流 house; bankroll 為 0 就跳過, 避免 bootstrap 零值 house 行
+        const bankroll = new Decimal(locked.bankroll)
+        const bankrollReturned = bankroll.greaterThan(0)
+          ? bankroll.toNumber()
+          : 0
+        if (bankrollReturned > 0) {
+          await this.house.houseMove(bankrollReturned, tx)
+        }
+        await tx.game.update({
+          where: { id },
+          data: { status: 'closed', bankroll: 0, pot: 0 },
+        })
+        return {
+          success: true,
+          status: 'closed',
+          forfeitedCount,
+          bankrollReturned,
+        }
+      })
+      // 清 Redis state best-effort: 清不掉不阻塞, DB closed 是權威
+      try {
+        await this.redis.del(`game:${id}:state`)
+      } catch (err) {
+        this.logger.warn(
+          `Failed to delete game state cache for game ${id}: ${err}`,
+        )
+      }
+      return result
+    })
+  }
+
   async replenish(id: string, dto: ReplenishGameDto) {
     const game = await this.findOne(id)
     if (game.status === 'closed') {
@@ -154,62 +273,128 @@ export class GameService {
     })
   }
 
-  async joinGame(gameId: string, userId: string) {
-    const queueKey = `join:${gameId}`
+  /**
+   * per-game queue 串行化: 同桌動作串同一條 chain。
+   * key 只在 map 仍指向本次設入的 tail task 時才刪除——頭部任務的 finally
+   * 若無條件 delete, 後方串鏈中的任務會失去互斥, 新請求可並行進入。
+   * task 的 reject 照常 propagate 給呼叫端(catch 只用在存進 map 的那份)。
+   */
+  private enqueueGameAction<T>(
+    queueKey: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
     const task = (
       this.gameActionQueues.get(queueKey) ?? Promise.resolve()
-    ).then(() => this._joinGameInternal(gameId, userId))
-    this.gameActionQueues.set(
-      queueKey,
-      task.catch(() => undefined),
-    )
+    ).then(fn)
+    const stored = task.catch(() => undefined)
+    this.gameActionQueues.set(queueKey, stored)
     return task.finally(() => {
-      this.gameActionQueues.delete(queueKey)
+      if (this.gameActionQueues.get(queueKey) === stored) {
+        this.gameActionQueues.delete(queueKey)
+      }
     })
+  }
+
+  async joinGame(gameId: string, userId: string) {
+    return this.enqueueGameAction(`join:${gameId}`, () =>
+      this._joinGameInternal(gameId, userId),
+    )
   }
 
   private async _joinGameInternal(gameId: string, userId: string) {
     const game = await this.prisma.game.findUnique({ where: { id: gameId } })
-    if (!game || game.status !== 'waiting') {
-      throw new BadRequestException(`Game ${gameId} is not in waiting status`)
+    if (!game) {
+      throw new NotFoundException(`Game ${gameId} not found`)
     }
 
-    const playerCount = await this.prisma.playerGame.count({
-      where: { gameId },
-    })
-    if (playerCount >= game.maxPlayers) {
-      throw new BadRequestException(`Game ${gameId} is full`)
+    // 情境 1: 進行中 → 只接受純 reconnect, 不接受新玩家
+    if (game.status === 'playing') {
+      // 只認 'playing': forfeited 是終態, 離場者不可再 reconnect 回該輪
+      const activeRow = await this.prisma.playerGame.findFirst({
+        where: { gameId, playerId: userId, status: 'playing' },
+      })
+      if (!activeRow) {
+        throw new ConflictException(
+          '本局進行中,請等本局結束後再加入',
+        )
+      }
+      // 純 reconnect: 不重複 placeBet、不建新列、bankroll 不動
+      const cached = await this.redis.get(`game:${gameId}:state`)
+      if (!cached) {
+        throw new ServiceUnavailableException(
+          `Game ${gameId} 的進行中狀態已遺失,請稍後重試或聯絡管理員`,
+        )
+      }
+      const gameState = JSON.parse(cached) as GameState
+      return { success: true, position: activeRow.position, gameState }
     }
 
-    const existingPlayer = await this.prisma.playerGame.findFirst({
-      where: { gameId, playerId: userId },
-    })
-    if (existingPlayer) {
-      throw new ConflictException(
-        `User ${userId} has already joined game ${gameId}`,
+    if (game.status !== 'waiting' && game.status !== 'completed') {
+      throw new BadRequestException(
+        `Game ${gameId} is not joinable (status: ${game.status})`,
       )
     }
 
-    const updatedWallet = await this.wallet.placeBet(userId, gameId, game.buyIn)
+    // 容量以當輪('playing')人數為準, 讓重用桌可再填滿;
+    // forfeited 是終態, 不佔容量
+    const activeCount = await this.prisma.playerGame.count({
+      where: { gameId, status: 'playing' },
+    })
+    if (activeCount >= game.maxPlayers) {
+      throw new BadRequestException(`Game ${gameId} is full`)
+    }
 
-    await this.prisma.game.update({
-      where: { id: gameId },
-      data: { bankroll: { increment: game.buyIn } },
+    const existingRow = await this.prisma.playerGame.findFirst({
+      where: { gameId, playerId: userId },
     })
 
-    const position = playerCount
-    await this.prisma.playerGame.create({
-      data: {
-        playerId: userId,
+    if (existingRow && existingRow.status === 'playing') {
+      // 已入座當輪(桌未滿、尚未發牌)→ 冪等回傳, 不重複扣款
+      const gameState = await this.getGameState(gameId)
+      return { success: true, position: existingRow.position, gameState }
+    }
+
+    const position = activeCount
+    // 扣款 → bankroll increment → 入座列三步必須同生共死: 收進單一外層 tx,
+    // 中斷/重試不會留下「錢扣了但沒入座」的半態(double-charge 根源)
+    await this.prisma.$transaction(async (tx) => {
+      const updatedWallet = await this.wallet.placeBet(
+        userId,
         gameId,
-        balance: updatedWallet.balance.toNumber(),
-        hand: [],
-        status: 'playing',
-        position,
-      },
+        game.buyIn,
+        tx,
+      )
+      await tx.game.update({
+        where: { id: gameId },
+        data: { bankroll: { increment: game.buyIn } },
+      })
+      if (existingRow) {
+        // 情境 2: 再入新輪次 → 重新扣款, UPDATE 原列(unique 約束不可 create 新列)
+        await tx.playerGame.update({
+          where: { id: existingRow.id },
+          data: {
+            status: 'playing',
+            hand: [],
+            balance: updatedWallet.balance.toNumber(),
+            position,
+          },
+        })
+      } else {
+        // 情境 3: 新加入
+        await tx.playerGame.create({
+          data: {
+            playerId: userId,
+            gameId,
+            balance: updatedWallet.balance.toNumber(),
+            hand: [],
+            status: 'playing',
+            position,
+          },
+        })
+      }
     })
 
-    if (playerCount + 1 >= game.maxPlayers) {
+    if (activeCount + 1 >= game.maxPlayers) {
       await this.startGame(gameId)
     }
 
@@ -217,9 +402,174 @@ export class GameService {
     return { success: true, position, gameState }
   }
 
+  // D5: 玩家離場 forfeit。與 handleAction 共用同一把 per-game queue( key = gameId ),
+  // 串行化避免與結算 race。
+  // 依局狀態分語意:
+  // - playing(局進行中): forfeited 終態, buyIn 沒入 bankroll(原 D5, 不動)。
+  // - waiting / completed(局未開始): 退款 —— buyIn 原路退回 wallet(refund audit 列),
+  //   bankroll −buyIn, 列標新終態 'refunded'(自由字串, 無 migration)。
+  async forfeitGame(
+    gameId: string,
+    userId: string,
+  ): Promise<{
+    success: boolean
+    forfeited: boolean
+    refunded?: boolean
+    tableStatus: string
+    refundAmount?: number
+    voided?: boolean
+    gameState?: GameState
+  }> {
+    return this.enqueueGameAction(gameId, () =>
+      this._forfeitGameInternal(gameId, userId),
+    )
+  }
+
+  private async _forfeitGameInternal(gameId: string, userId: string) {
+    const game = await this.prisma.game.findUnique({ where: { id: gameId } })
+    if (!game) {
+      throw new NotFoundException(`Game ${gameId} not found`)
+    }
+    // completed = 重用桌(上一輪已結算, 新輪次可能正被填座); 局未開始同样是
+    // 合法 forfeit 情境(退款), 故接受
+    if (
+      game.status !== 'playing' &&
+      game.status !== 'waiting' &&
+      game.status !== 'completed'
+    ) {
+      throw new BadRequestException('Game is not in an active state')
+    }
+
+    // 只有當輪 'playing' 列可離場; completed / forfeited / refunded 皆為終態
+    const activeRow = await this.prisma.playerGame.findFirst({
+      where: { gameId, playerId: userId, status: 'playing' },
+    })
+    if (!activeRow) {
+      throw new BadRequestException('No active seat to forfeit')
+    }
+
+    const stateKey = `game:${gameId}:state`
+    // 先讀 state 再寫 DB: 重試語意一致(不會變成 400 No active seat)
+    const cached = await this.redis.get(stateKey)
+
+    if (game.status === 'waiting' || game.status === 'completed') {
+      // 局未開始: 退款 buyIn。wallet 加回 + refund audit 列(含 balanceBefore/
+      // balanceAfter, 對齊既有 audit 格式)、bankroll −buyIn、入座列新終態
+      // 'refunded' 四寫同生共死於單一 tx, 中斷不留「退了款但 seat 還在」半態
+      await this.prisma.$transaction(async (tx) => {
+        await this.wallet.refundBuyIn(
+          userId,
+          gameId,
+          game.buyIn,
+          tx,
+          'forfeit before game start',
+        )
+        await tx.game.update({
+          where: { id: gameId },
+          data: { bankroll: { decrement: game.buyIn } },
+        })
+        await tx.playerGame.update({
+          where: { id: activeRow.id },
+          data: { status: 'refunded' },
+        })
+      })
+      // 尚未發牌, 正常沒有 state; 若存在殘留 state, 一併移除該玩家
+      if (cached) {
+        const state = JSON.parse(cached) as GameState
+        state.players = state.players.filter((p) => p.userId !== userId)
+        if (state.players.length > 0) {
+          await this.setGameState(gameId, state)
+        } else {
+          await this.redis.del(stateKey)
+        }
+      }
+      return {
+        success: true,
+        forfeited: false,
+        refunded: true,
+        tableStatus: game.status,
+        refundAmount: game.buyIn,
+      }
+    }
+
+    // playing: state 必須存在(在標記前檢查, 見上)
+    if (!cached) {
+      throw new ServiceUnavailableException(
+        `Game ${gameId} 的進行中狀態已遺失,請稍後重試或聯絡管理員`,
+      )
+    }
+
+    // 不動錢: buyIn 已在 bankroll, 不派彩, 只標終態
+    await this.prisma.playerGame.update({
+      where: { id: activeRow.id },
+      data: { status: 'forfeited' },
+    })
+
+    const state = JSON.parse(cached) as GameState
+    const playerIndex = state.players.findIndex((p) => p.userId === userId)
+    if (playerIndex === -1) {
+      // DB 列為權威, state 已無此座(異常殘留), 標記已生效
+      return { success: true, forfeited: true, tableStatus: 'playing' }
+    }
+    state.players.splice(playerIndex, 1)
+
+    if (state.players.length === 0) {
+      // 本局 void: 不寫 GameHistory、不派彩, 桌回 waiting, 清 state, pot 歸零
+      // (無進行中局); guard 寫入: 並行 close 已把桌轉成 closed 時 count=0, 不覆蓋回去
+      const voidResult = await this.prisma.game.updateMany({
+        where: { id: gameId, status: 'playing' },
+        data: { status: 'waiting', updatedAt: new Date(), pot: 0 },
+      })
+      if (voidResult.count === 0) {
+        // 已被並行 close/settle 改掉 status: 只清殘留 state, 照實回傳現況
+        this.logger.warn(
+          `Game ${gameId} forfeit void skipped: game status no longer 'playing' (parallel close/settle)`,
+        )
+        await this.redis.del(stateKey)
+        const current = await this.prisma.game.findUnique({
+          where: { id: gameId },
+        })
+        return {
+          success: true,
+          forfeited: true,
+          tableStatus: current?.status ?? 'unknown',
+          voided: true,
+        }
+      }
+      await this.redis.del(stateKey)
+      return { success: true, forfeited: true, tableStatus: 'waiting', voided: true }
+    }
+
+    const nextActiveIndex = state.players.findIndex(
+      (p, i) => i >= playerIndex && p.status === 'playing',
+    )
+    if (nextActiveIndex === -1) {
+      // 剩餘玩家皆已 stand/bust: 直接走莊家回合正常結算(照派彩、寫 history),
+      // 不 void, 避免離場者吃掉其他玩家應得
+      const finalState = await this.handleDealerTurn(gameId, state)
+      return {
+        success: true,
+        forfeited: true,
+        tableStatus: 'completed',
+        voided: false,
+        // in-memory 終態(含 dealerHand + results): 結算後 Redis 已清,
+        // 呼叫端依此廣播 game:ended, 從 DB 重建會丟掉這兩樣(對齊 game:action)
+        gameState: finalState,
+      }
+    }
+    // 被移除者在指標上或指標之後 → 指標落到移除位置起的下一位 'playing'
+    if (state.currentPlayerIndex >= playerIndex) {
+      state.currentPlayerIndex = nextActiveIndex
+    }
+
+    await this.setGameState(gameId, state)
+    return { success: true, forfeited: true, tableStatus: 'playing', voided: false }
+  }
+
   private async startGame(gameId: string) {
+    // 重用桌(上一輪已 completed)再填滿後也要能開局
     const result = await this.prisma.game.updateMany({
-      where: { id: gameId, status: 'waiting' },
+      where: { id: gameId, status: { in: ['waiting', 'completed'] } },
       data: { status: 'playing', updatedAt: new Date() },
     })
     if (result.count === 0) {
@@ -237,8 +587,9 @@ export class GameService {
       return
     }
 
+    // 只發牌給當輪玩家; 上一輪 completed / forfeited 列不参与開局
     const playerGames = await this.prisma.playerGame.findMany({
-      where: { gameId },
+      where: { gameId, status: 'playing' },
       orderBy: { position: 'asc' },
     })
 
@@ -265,12 +616,20 @@ export class GameService {
     }
     const dealerHand: Card[] = [deck.drawCard(), deck.drawCard()]
 
+    // 單局 pot(Σbet)同步寫 DB: Redis state 是局中真相, DB pot 供
+    // getGameState 的 DB 重建路徑讀到正確值; 沿用 join queue 串行化, 不新增 tx
+    const pot = players.reduce((sum, player) => sum + player.bet, 0)
+    await this.prisma.game.update({
+      where: { id: gameId },
+      data: { pot },
+    })
+
     const gameState: GameState = {
       id: gameId,
       status: 'playing',
       players,
       dealerHand,
-      pot: players.reduce((sum, player) => sum + player.bet, 0),
+      pot,
       currentPlayerIndex: 0,
       deckCards: deck.getRemainingCards(),
     }
@@ -283,17 +642,9 @@ export class GameService {
     action: string,
     betAmount?: number,
   ) {
-    const queueKey = gameId
-    const task = (
-      this.gameActionQueues.get(queueKey) ?? Promise.resolve()
-    ).then(() => this._handleActionInternal(gameId, userId, action, betAmount))
-    this.gameActionQueues.set(
-      queueKey,
-      task.catch(() => undefined),
+    return this.enqueueGameAction(gameId, () =>
+      this._handleActionInternal(gameId, userId, action, betAmount),
     )
-    return task.finally(() => {
-      this.gameActionQueues.delete(queueKey)
-    })
   }
 
   private async _handleActionInternal(
@@ -318,10 +669,14 @@ export class GameService {
           `Player ${userId} not found in game ${gameId}`,
         )
       }
-      await this.wallet.placeBet(userId, gameId, player.bet)
-      await this.prisma.game.update({
-        where: { id: gameId },
-        data: { bankroll: { increment: player.bet } },
+      // 同 join: 扣款與 bankroll increment 收進單一 tx, 不允許
+      // 「錢扣了但 bankroll 沒進」的半態
+      await this.prisma.$transaction(async (tx) => {
+        await this.wallet.placeBet(userId, gameId, player.bet, tx)
+        await tx.game.update({
+          where: { id: gameId },
+          data: { bankroll: { increment: player.bet } },
+        })
       })
     }
 
@@ -443,8 +798,10 @@ export class GameService {
     gameState: GameState,
   ): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
+      // 結算只可能合法地從 playing 進入: waiting/completed/closed 全走 count=0 skip
+      // (closed 桌的 in-flight 結算或 stale Redis state 不可對已回流 house 的 bankroll 派彩)
       const updateResult = await tx.game.updateMany({
-        where: { id: gameId, status: { not: 'completed' } },
+        where: { id: gameId, status: 'playing' },
         data: { status: 'completed', updatedAt: new Date() },
       })
       if (updateResult.count === 0) {
@@ -463,6 +820,14 @@ export class GameService {
         },
       })
 
+      // 結算完單局 pot 歸零: DB 重建路徑不可殘留已結算局的 pot
+      await tx.game.update({
+        where: { id: gameId },
+        data: { pot: 0 },
+      })
+
+      // 只更新 state.players 內的玩家: forfeited 玩家在 forfeit 時即被移出
+      // state.players, 不會被此處改回 completed(終態保持)
       for (const player of gameState.players) {
         const result = results.find((r) => r.userId === player.userId)
         await tx.playerGame.update({
@@ -490,7 +855,10 @@ export class GameService {
     try {
       const cached = await this.redis.get(`game:${gameId}:state`)
       if (cached) {
-        return JSON.parse(cached) as GameState
+        const state = JSON.parse(cached) as GameState
+        // 只含當輪玩家, 避免 completed 殘留進入 state 與 payout 目標
+        state.players = state.players.filter((p) => p.status !== 'completed')
+        return state
       }
     } catch (err) {
       this.logger.warn(
@@ -503,7 +871,7 @@ export class GameService {
     )
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
-      include: { players: true },
+      include: { players: { where: { status: 'playing' } } },
     })
     if (!game) {
       throw new NotFoundException(`Game ${gameId} not found`)

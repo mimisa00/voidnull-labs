@@ -187,7 +187,7 @@ export class AppGateway
    */
   private async broadcastGameState(
     gameId: string,
-    sourceState: GameState,
+    sourceState?: GameState,
   ): Promise<BroadcastState | null> {
     let state: BroadcastState | null
     try {
@@ -213,6 +213,16 @@ export class AppGateway
   }
 
   // Server-side emit methods (called by other services)
+  /**
+   * 公開的整桌狀態廣播入口(供 WS handler 之外的觸發, 如 REST forfeit)。
+   * 與 game:action/game:join 同通道: payload { gameId, state } 已遮蔽(不含 deckCards),
+   * status 為 completed 時另發 game:ended。stateOverride 為 in-memory 終態
+   * (結算瞬間 Redis 已清); 未傳時從 Redis / DB 重建。
+   */
+  emitGameUpdate(gameId: string, stateOverride?: GameState) {
+    return this.broadcastGameState(gameId, stateOverride)
+  }
+
   notifyUser(userId: string, event: string, data: any) {
     this.server.to(`user:${userId}`).emit(event, data)
   }
